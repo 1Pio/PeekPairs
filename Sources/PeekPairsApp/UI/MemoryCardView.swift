@@ -1,3 +1,4 @@
+import AppKit
 import PeekPairsCore
 import SwiftUI
 
@@ -87,13 +88,39 @@ private struct CardFaceView: View {
                     .strokeBorder(isMatched ? Color.mint.opacity(0.74) : Color.white.opacity(0.18), lineWidth: isMatched ? 2 : 1)
             }
             .overlay {
-                Image(assetName, bundle: .module)
-                    .resizable()
-                    .scaledToFit()
+                CardFigureImage(assetName: assetName)
                     .padding(8)
                     .shadow(color: .white.opacity(0.18), radius: 6)
             }
             .shadow(color: isMatched ? Color.mint.opacity(0.18) : .black.opacity(0.26), radius: isMatched ? 14 : 9, y: 5)
             .glassEffect(.regular.tint(Color.white.opacity(0.035)), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct CardFigureImage: View {
+    let assetName: String
+
+    var body: some View {
+        if let image = loadImage() {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: "sparkle")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(.white.opacity(0.74))
+        }
+    }
+
+    private func loadImage() -> NSImage? {
+        guard let url = Bundle.module.url(
+            forResource: assetName,
+            withExtension: "png",
+            subdirectory: "CardFigures"
+        ) else {
+            return nil
+        }
+
+        return NSImage(contentsOf: url)
     }
 }
