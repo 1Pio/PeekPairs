@@ -10,6 +10,7 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var history: RoundHistory
     @Published var isSettingsPresented = false
     @Published private(set) var hotkeyStatuses: [HotkeyAction: HotkeyRegistrationStatus] = [:]
+    @Published private(set) var boardAnimationToken = 0
 
     private let store: AppFileStore
     private var lastTickDate: Date?
@@ -45,6 +46,18 @@ final class GameViewModel: ObservableObject {
         game.phase == .idle || game.phase == .paused
     }
 
+    var isGameRunning: Bool {
+        game.phase == .running
+    }
+
+    var pauseResumeIconName: String {
+        isGameRunning ? "pause.fill" : "play.fill"
+    }
+
+    var pauseResumeHelpText: String {
+        isGameRunning ? "Pause game" : "Resume game"
+    }
+
     func tick(now: Date) {
         guard game.phase == .running else {
             lastTickDate = nil
@@ -71,26 +84,14 @@ final class GameViewModel: ObservableObject {
     }
 
     func startNewGame() {
-        game = MemoryGameEngine(
-            boardSize: settings.boardSize,
-            seed: Self.nextSeed(),
-            assetNames: CardAssetCatalog.names,
-            startsRunning: true
-        )
-        hasSavedCurrentRound = false
+        resetGame(startsRunning: true)
         shouldResumeAfterActivation = true
         lastTickDate = Date()
     }
 
     func openPausedBoard() {
         if game.phase == .completed {
-            game = MemoryGameEngine(
-                boardSize: settings.boardSize,
-                seed: Self.nextSeed(),
-                assetNames: CardAssetCatalog.names,
-                startsRunning: false
-            )
-            hasSavedCurrentRound = false
+            resetGame(startsRunning: false)
         } else if game.phase == .running {
             game.pause()
         } else {
@@ -110,6 +111,24 @@ final class GameViewModel: ObservableObject {
         shouldResumeAfterActivation = true
         game.startOrResume()
         lastTickDate = Date()
+    }
+
+    func togglePauseResume() {
+        if game.phase == .running {
+            pauseCurrentGame(shouldResumeOnActivation: false)
+        } else {
+            resumeOrStartGame()
+        }
+    }
+
+    func resumeFromBoardTap() {
+        guard isBoardPaused else { return }
+        resumeOrStartGame()
+    }
+
+    func pauseForManualDismissal() {
+        pauseCurrentGame(shouldResumeOnActivation: false)
+        isSettingsPresented = false
     }
 
     func showSettings() {
@@ -132,9 +151,7 @@ final class GameViewModel: ObservableObject {
 
     func applicationWillResignActive() {
         guard game.phase == .running else { return }
-        shouldResumeAfterActivation = true
-        game.pause()
-        lastTickDate = nil
+        pauseCurrentGame(shouldResumeOnActivation: true)
     }
 
     func applicationDidBecomeActive() {
@@ -161,6 +178,24 @@ final class GameViewModel: ObservableObject {
 
     private func persistSettings() {
         store.save(settings, to: .settings)
+    }
+
+    private func resetGame(startsRunning: Bool) {
+        game = MemoryGameEngine(
+            boardSize: settings.boardSize,
+            seed: Self.nextSeed(),
+            assetNames: CardAssetCatalog.names,
+            startsRunning: startsRunning
+        )
+        boardAnimationToken &+= 1
+        hasSavedCurrentRound = false
+    }
+
+    private func pauseCurrentGame(shouldResumeOnActivation: Bool) {
+        guard game.phase == .running else { return }
+        shouldResumeAfterActivation = shouldResumeOnActivation
+        game.pause()
+        lastTickDate = nil
     }
 
     private static func nextSeed() -> UInt64 {

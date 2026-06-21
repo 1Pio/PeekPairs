@@ -19,11 +19,12 @@ The packaged app is written to `dist/PeekPairs.app`.
 ## Controls
 
 - Gear button or `Command-,`: settings popup
-- Sparkle button: new round
+- Plus button: new round
+- Play/pause button: resume or pause the current round
 - Default global shortcuts:
   - `Control-Option-Command-M`: open paused board
   - `Control-Option-Command-N`: open and start a new game
-  - `Control-Option-Command-P`: resume current game or start one
+  - `Control-Option-Command-P`: resume current game or start one; when PeekPairs is already focused, hide it
 
 Settings and history are saved locally in `~/Library/Application Support/PeekPairs`.
 

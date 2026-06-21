@@ -17,16 +17,20 @@ struct BoardView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.03))
-                    .glassEffect(.regular.tint(Color.white.opacity(0.045)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .fill(.ultraThinMaterial)
+                    .glassEffect(.regular.tint(Color.white.opacity(0.025)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
                     }
 
                 LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(viewModel.game.cards) { card in
-                        MemoryCardView(card: card) {
+                    ForEach(Array(viewModel.game.cards.enumerated()), id: \.element.id) { index, card in
+                        MemoryCardView(
+                            card: card,
+                            appearanceToken: viewModel.boardAnimationToken,
+                            appearanceDelay: appearanceDelay(for: index)
+                        ) {
                             viewModel.select(cardID: card.id)
                         }
                         .aspectRatio(1, contentMode: .fit)
@@ -36,10 +40,22 @@ struct BoardView: View {
                 .padding(16)
                 .blur(radius: viewModel.isBoardPaused ? 9 : 0)
                 .saturation(viewModel.isBoardPaused ? 0.58 : 1)
-                .animation(.smooth(duration: 0.18), value: viewModel.isBoardPaused)
+                .animation(.smooth(duration: viewModel.isBoardPaused ? 0.18 : 0.54), value: viewModel.isBoardPaused)
 
                 if viewModel.isBoardPaused {
+                    Button {
+                        viewModel.resumeFromBoardTap()
+                    } label: {
+                        Color.white.opacity(0.001)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Resume game")
+                    .accessibilityIdentifier("paused-board-resume-button")
+                    .accessibilityLabel("Resume game")
+
                     PausedOverlayView()
+                        .allowsHitTesting(false)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
             }
@@ -48,6 +64,13 @@ struct BoardView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityIdentifier("game-board")
+    }
+
+    private func appearanceDelay(for index: Int) -> TimeInterval {
+        let dimension = viewModel.game.boardSize.dimension
+        let row = index / dimension
+        let column = index % dimension
+        return TimeInterval(row + column) * 0.034
     }
 }
 

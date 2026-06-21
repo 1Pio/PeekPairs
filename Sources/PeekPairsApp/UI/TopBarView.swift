@@ -24,12 +24,23 @@ struct TopBarView: View {
             Button {
                 viewModel.startNewGame()
             } label: {
-                Image(systemName: "sparkles")
+                Image(systemName: "plus.square")
                     .font(.system(size: 15, weight: .semibold))
             }
             .buttonStyle(.glass)
             .help("Start a new game")
             .accessibilityIdentifier("new-game-button")
+
+            Button {
+                viewModel.togglePauseResume()
+            } label: {
+                Image(systemName: viewModel.pauseResumeIconName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 15, height: 15)
+            }
+            .buttonStyle(.glass)
+            .help(viewModel.pauseResumeHelpText)
+            .accessibilityIdentifier("pause-resume-button")
 
             Button {
                 viewModel.showSettings()

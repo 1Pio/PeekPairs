@@ -86,14 +86,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func handleGlobalHotkey(_ action: HotkeyAction) {
-        showWindow(activate: true)
-
         switch action {
         case .openPausedBoard:
+            showWindow(activate: true)
             viewModel.openPausedBoard()
         case .startNewGame:
+            showWindow(activate: true)
             viewModel.startNewGame()
         case .resumeOrStartGame:
+            if shouldCollapseForResumeHotkey {
+                collapseWindowFromResumeHotkey()
+                return
+            }
+
+            showWindow(activate: true)
             viewModel.resumeOrStartGame()
         }
     }
@@ -105,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
 
         let effectView = NSVisualEffectView()
-        effectView.material = .hudWindow
+        effectView.material = .underWindowBackground
         effectView.blendingMode = .behindWindow
         effectView.state = .active
         effectView.translatesAutoresizingMaskIntoConstraints = false
@@ -136,8 +142,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.contentView = effectView
         window.setContentSize(NSSize(width: 760, height: 860))
         window.delegate = self
+        window.level = .popUpMenu
+        window.isMovableByWindowBackground = true
+        window.tabbingMode = .disallowed
         window.collectionBehavior = [.managed, .moveToActiveSpace, .fullScreenPrimary]
         window.center()
+        hideSystemWindowControls(for: window)
 
         self.window = window
     }
@@ -150,6 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func showWindow(activate: Bool) {
         guard let window else { return }
+        window.level = .popUpMenu
         window.deminiaturize(nil)
         if activate {
             NSApp.unhide(nil)
@@ -157,6 +168,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    private var shouldCollapseForResumeHotkey: Bool {
+        guard let window else { return false }
+        return NSApp.isActive && window.isVisible && !window.isMiniaturized
+    }
+
+    private func collapseWindowFromResumeHotkey() {
+        viewModel.pauseForManualDismissal()
+        window?.miniaturize(nil)
+        NSApp.hide(nil)
+    }
+
+    private func hideSystemWindowControls(for window: NSWindow) {
+        [
+            NSWindow.ButtonType.closeButton,
+            .miniaturizeButton,
+            .zoomButton
+        ].forEach { buttonType in
+            let button = window.standardWindowButton(buttonType)
+            button?.isHidden = true
+            button?.isEnabled = false
+        }
     }
 
     private func buildMainMenu() {

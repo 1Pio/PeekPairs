@@ -59,8 +59,8 @@ struct SettingsSheetView: View {
         .padding(20)
         .frame(width: 520)
         .background {
-            Color(red: 0.035, green: 0.04, blue: 0.05)
-                .opacity(0.95)
+            Rectangle()
+                .fill(.ultraThinMaterial)
                 .ignoresSafeArea()
         }
         .preferredColorScheme(.dark)
