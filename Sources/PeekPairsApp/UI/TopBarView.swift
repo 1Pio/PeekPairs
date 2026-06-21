@@ -4,32 +4,16 @@ struct TopBarView: View {
     @ObservedObject var viewModel: GameViewModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "stopwatch")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.78))
-                Text(viewModel.formattedElapsed)
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .contentTransition(.numericText())
-                    .frame(width: 76, alignment: .leading)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .glassEffect(.regular.tint(Color.white.opacity(0.06)), in: Capsule())
-            .accessibilityIdentifier("stopwatch")
-
-            Spacer()
-
+        HStack(spacing: 10) {
             Button {
-                viewModel.startNewGame()
+                viewModel.showSettings()
             } label: {
-                Image(systemName: "plus.square")
+                Image(systemName: "gearshape")
                     .font(.system(size: 15, weight: .semibold))
             }
             .buttonStyle(.glass)
-            .help("Start a new game")
-            .accessibilityIdentifier("new-game-button")
+            .help("Settings")
+            .accessibilityIdentifier("settings-button")
 
             Button {
                 viewModel.togglePauseResume()
@@ -43,14 +27,15 @@ struct TopBarView: View {
             .accessibilityIdentifier("pause-resume-button")
 
             Button {
-                viewModel.showSettings()
+                viewModel.startNewGame()
             } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "plus.square")
                     .font(.system(size: 15, weight: .semibold))
             }
             .buttonStyle(.glass)
-            .help("Settings")
-            .accessibilityIdentifier("settings-button")
+            .help("Start a new game")
+            .accessibilityIdentifier("new-game-button")
         }
+        .frame(maxWidth: .infinity)
     }
 }

@@ -46,15 +46,17 @@ public struct MemoryGameEngine: Equatable, Sendable {
     public private(set) var elapsed: TimeInterval
     public private(set) var cards: [MemoryCard]
 
+    private var animationElapsed: TimeInterval
     private var revealedCardIDs: [Int]
     private var mismatchHideAt: TimeInterval?
     private var matchedPairRemovalDueAt: [Int: TimeInterval]
-    private var removedPairIDs: Set<Int>
+    private var foundPairIDs: Set<Int>
 
     public var totalPairs: Int { boardSize.pairCount }
-    public var foundPairs: Int { removedPairIDs.count }
+    public var foundPairs: Int { foundPairIDs.count }
     public var progressText: String { "\(foundPairs)/\(totalPairs)" }
     public var isBoardPaused: Bool { phase == .idle || phase == .paused }
+    public var hasPendingVisualEvents: Bool { !matchedPairRemovalDueAt.isEmpty }
 
     public init(
         boardSize: BoardSize,
@@ -68,10 +70,11 @@ public struct MemoryGameEngine: Equatable, Sendable {
         self.seed = seed
         self.phase = startsRunning ? .running : .idle
         self.elapsed = 0
+        self.animationElapsed = 0
         self.revealedCardIDs = []
         self.mismatchHideAt = nil
         self.matchedPairRemovalDueAt = [:]
-        self.removedPairIDs = []
+        self.foundPairIDs = []
 
         var pairDeck = (0..<boardSize.pairCount).flatMap { pairID in
             [
@@ -102,8 +105,18 @@ public struct MemoryGameEngine: Equatable, Sendable {
     }
 
     public mutating func advance(by delta: TimeInterval) {
-        guard phase == .running, delta > 0 else { return }
-        elapsed += delta
+        guard delta > 0 else { return }
+
+        switch phase {
+        case .running:
+            elapsed += delta
+            animationElapsed += delta
+        case .completed:
+            animationElapsed += delta
+        case .idle, .paused:
+            return
+        }
+
         processDueEvents()
     }
 
@@ -140,29 +153,29 @@ public struct MemoryGameEngine: Equatable, Sendable {
             cards[secondIndex].visibility = .matched
             revealedCardIDs.removeAll()
             mismatchHideAt = nil
-            matchedPairRemovalDueAt[pairID] = elapsed + Self.matchedVisibilityDuration
+            foundPairIDs.insert(pairID)
+            matchedPairRemovalDueAt[pairID] = animationElapsed + Self.matchedVisibilityDuration
+            if foundPairs == totalPairs {
+                phase = .completed
+            }
             return .match(pairID: pairID, cardIDs: [firstID, secondID])
         } else {
-            mismatchHideAt = elapsed + Self.mismatchVisibilityDuration
+            mismatchHideAt = animationElapsed + Self.mismatchVisibilityDuration
             return .mismatch(firstID: firstID, secondID: secondID)
         }
     }
 
     private mutating func processDueEvents() {
-        if let mismatchHideAt, elapsed >= mismatchHideAt {
+        if let mismatchHideAt, animationElapsed >= mismatchHideAt {
             hideVisibleMismatch()
         }
 
         let duePairIDs = matchedPairRemovalDueAt
-            .filter { elapsed >= $0.value }
+            .filter { animationElapsed >= $0.value }
             .map(\.key)
 
         for pairID in duePairIDs {
             removeMatchedPair(pairID: pairID)
-        }
-
-        if foundPairs == totalPairs, phase == .running {
-            phase = .completed
         }
     }
 
@@ -179,7 +192,6 @@ public struct MemoryGameEngine: Equatable, Sendable {
 
     private mutating func removeMatchedPair(pairID: Int) {
         matchedPairRemovalDueAt[pairID] = nil
-        removedPairIDs.insert(pairID)
 
         for index in cards.indices where cards[index].pairID == pairID {
             cards[index].visibility = .removed

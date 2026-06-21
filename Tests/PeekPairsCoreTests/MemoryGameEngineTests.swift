@@ -53,8 +53,8 @@ struct MemoryGameEngineTests {
         #expect(game.cards.first { $0.id == third.id }?.visibility == .revealed)
     }
 
-    @Test("matched pair is counted only after disappearance delay")
-    func matchedPairCountsAfterRemoval() throws {
+    @Test("matched pair counts immediately but disappears after the cosmetic delay")
+    func matchedPairCountsBeforeRemoval() throws {
         let boardSize = try BoardSize(2)
         var game = MemoryGameEngine(boardSize: boardSize, seed: 4, assetNames: assets, startsRunning: true)
         let first = game.cards[0]
@@ -63,14 +63,37 @@ struct MemoryGameEngineTests {
         _ = game.selectCard(id: first.id)
         _ = game.selectCard(id: second.id)
 
-        #expect(game.foundPairs == 0)
+        #expect(game.foundPairs == 1)
         #expect(game.cards.first { $0.id == first.id }?.visibility == .matched)
 
         game.advance(by: MemoryGameEngine.matchedVisibilityDuration - 0.01)
-        #expect(game.foundPairs == 0)
+        #expect(game.foundPairs == 1)
 
         game.advance(by: 0.02)
         #expect(game.foundPairs == 1)
         #expect(game.cards.first { $0.id == first.id }?.visibility == .removed)
+    }
+
+    @Test("final pair completes the round immediately and keeps removal cosmetic")
+    func finalPairCompletesBeforeRemoval() throws {
+        let boardSize = try BoardSize(2)
+        var game = MemoryGameEngine(boardSize: boardSize, seed: 5, assetNames: assets, startsRunning: true)
+
+        for pairID in 0..<boardSize.pairCount {
+            let pairCards = game.cards.filter { $0.pairID == pairID }
+            _ = game.selectCard(id: pairCards[0].id)
+            _ = game.selectCard(id: pairCards[1].id)
+        }
+
+        let completedElapsed = game.elapsed
+
+        #expect(game.phase == .completed)
+        #expect(game.foundPairs == game.totalPairs)
+        #expect(game.cards.contains { $0.visibility == .matched })
+
+        game.advance(by: MemoryGameEngine.matchedVisibilityDuration + 0.01)
+
+        #expect(game.elapsed == completedElapsed)
+        #expect(game.cards.allSatisfy { $0.visibility == .removed })
     }
 }

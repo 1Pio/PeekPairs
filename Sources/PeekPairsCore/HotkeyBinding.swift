@@ -32,12 +32,41 @@ public struct HotkeyBinding: Codable, Equatable, Hashable, Sendable {
 }
 
 public struct AppSettings: Codable, Equatable, Sendable {
+    private enum CodingKeys: String, CodingKey {
+        case boardSize
+        case hotkeys
+        case minimizeOnFocusLoss
+    }
+
+    public static let defaultMinimizeOnFocusLoss = true
+
     public var boardSize: BoardSize
     public var hotkeys: [HotkeyAction: HotkeyBinding]
+    public var minimizeOnFocusLoss: Bool
 
-    public init(boardSize: BoardSize, hotkeys: [HotkeyAction: HotkeyBinding]) {
+    public init(
+        boardSize: BoardSize,
+        hotkeys: [HotkeyAction: HotkeyBinding],
+        minimizeOnFocusLoss: Bool = Self.defaultMinimizeOnFocusLoss
+    ) {
         self.boardSize = boardSize
         self.hotkeys = hotkeys
+        self.minimizeOnFocusLoss = minimizeOnFocusLoss
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        boardSize = try container.decode(BoardSize.self, forKey: .boardSize)
+        hotkeys = try container.decode([HotkeyAction: HotkeyBinding].self, forKey: .hotkeys)
+        minimizeOnFocusLoss = try container.decodeIfPresent(Bool.self, forKey: .minimizeOnFocusLoss)
+            ?? Self.defaultMinimizeOnFocusLoss
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(boardSize, forKey: .boardSize)
+        try container.encode(hotkeys, forKey: .hotkeys)
+        try container.encode(minimizeOnFocusLoss, forKey: .minimizeOnFocusLoss)
     }
 
     public static let defaults = AppSettings(

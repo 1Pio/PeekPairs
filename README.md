@@ -1,6 +1,6 @@
 # PeekPairs
 
-PeekPairs is a native macOS memory game built in SwiftUI/AppKit. It is designed for quick hotkey-driven rounds, dark-mode glass UI, animated 3D card flips, automatic focus-loss pause, persistent local stats, and configurable global shortcuts.
+PeekPairs is a native macOS memory game built in SwiftUI/AppKit. It is designed for quick hotkey-driven rounds, dark-mode glass UI, animated 3D card flips, automatic focus-loss pause/minimize, persistent local stats, and configurable global shortcuts.
 
 ## Build
 
@@ -21,6 +21,7 @@ The packaged app is written to `dist/PeekPairs.app`.
 - Gear button or `Command-,`: settings popup
 - Plus button: new round
 - Play/pause button: resume or pause the current round
+- Settings include default board size, global shortcuts, and the focus-loss minimize toggle.
 - Default global shortcuts:
   - `Control-Option-Command-M`: open paused board
   - `Control-Option-Command-N`: open and start a new game

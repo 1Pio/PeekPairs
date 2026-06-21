@@ -38,6 +38,19 @@ struct SettingsSheetView: View {
             }
             .settingsSectionGlass()
 
+            Toggle(isOn: minimizeOnFocusLossBinding) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Minimize on focus loss")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Pause and hide PeekPairs when another app becomes active.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.58))
+                }
+            }
+            .toggleStyle(.switch)
+            .settingsSectionGlass()
+            .accessibilityIdentifier("minimize-on-focus-loss-toggle")
+
             VStack(alignment: .leading, spacing: 10) {
                 Text("Global shortcuts")
                     .font(.system(size: 13, weight: .semibold))
@@ -57,12 +70,17 @@ struct SettingsSheetView: View {
             .settingsSectionGlass()
         }
         .padding(20)
-        .frame(width: 520)
+        .frame(maxWidth: .infinity)
         .background {
-            Rectangle()
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
+                .glassEffect(.regular.tint(Color.white.opacity(0.045)), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                }
         }
+        .shadow(color: .black.opacity(0.34), radius: 24, y: 12)
         .preferredColorScheme(.dark)
         .overlay {
             if let recordingAction {
@@ -85,6 +103,13 @@ struct SettingsSheetView: View {
         Binding(
             get: { viewModel.settings.boardSize },
             set: { viewModel.update(boardSize: $0) }
+        )
+    }
+
+    private var minimizeOnFocusLossBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.settings.minimizeOnFocusLoss },
+            set: { viewModel.update(minimizeOnFocusLoss: $0) }
         )
     }
 }

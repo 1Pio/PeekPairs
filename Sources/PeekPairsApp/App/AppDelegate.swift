@@ -5,15 +5,23 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private let defaultWindowSide: CGFloat = 760
+    private let minimumWindowSide: CGFloat = 520
+
     private let viewModel = GameViewModel()
     private var window: NSWindow?
     private var hotkeyCenter: GlobalHotkeyCenter?
+    private var activeAppMonitor: Timer?
+    private var lastWindowPresentationDate = Date.distantPast
+    private var waitingForPresentedWindowActivation = false
     private var cancellables: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.appearance = NSAppearance(named: .darkAqua)
         buildMainMenu()
         createWindow()
+        observeActiveApplicationChanges()
+        startActiveApplicationMonitor()
 
         hotkeyCenter = GlobalHotkeyCenter { [weak self] action in
             Task { @MainActor in
@@ -39,11 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        waitingForPresentedWindowActivation = false
         viewModel.applicationDidBecomeActive()
     }
 
     func applicationWillResignActive(_ notification: Notification) {
         viewModel.applicationWillResignActive()
+        collapseWindowForFocusLossIfNeeded()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -65,6 +75,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return false
     }
 
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        let currentSize = sender.frame.size
+        let widthDelta = abs(frameSize.width - currentSize.width)
+        let heightDelta = abs(frameSize.height - currentSize.height)
+        let proposedSide = widthDelta > heightDelta ? frameSize.width : frameSize.height
+        let side = max(minimumWindowSide, proposedSide)
+        return NSSize(width: side, height: side)
+    }
+
     @objc private func openSettings() {
         showWindow(activate: true)
         viewModel.showSettings()
@@ -83,6 +102,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func resumeOrStartGame() {
         showWindow(activate: true)
         viewModel.resumeOrStartGame()
+    }
+
+    @objc private func activeApplicationDidChange(_ notification: Notification) {
+        guard let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+            return
+        }
+
+        collapseWindowIfNeeded(for: activatedApp)
     }
 
     private func handleGlobalHotkey(_ action: HotkeyAction) {
@@ -110,37 +137,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
 
-        let effectView = NSVisualEffectView()
-        effectView.material = .underWindowBackground
-        effectView.blendingMode = .behindWindow
-        effectView.state = .active
-        effectView.translatesAutoresizingMaskIntoConstraints = false
-        effectView.addSubview(hostingView)
+        let glassView = NSGlassEffectView()
+        glassView.style = .regular
+        glassView.cornerRadius = 0
+        glassView.tintColor = NSColor.white.withAlphaComponent(0.035)
+        glassView.translatesAutoresizingMaskIntoConstraints = false
+        glassView.contentView = hostingView
 
         hostingView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            hostingView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-            hostingView.topAnchor.constraint(equalTo: effectView.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor)
+            hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: glassView.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: glassView.bottomAnchor)
         ])
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 860),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+        let window = PeekPairsWindow(
+            contentRect: NSRect(x: 0, y: 0, width: defaultWindowSide, height: defaultWindowSide),
+            styleMask: [.borderless, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "PeekPairs"
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         window.isRestorable = false
         window.isReleasedWhenClosed = false
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.minSize = NSSize(width: 480, height: 560)
-        window.contentView = effectView
-        window.setContentSize(NSSize(width: 760, height: 860))
+        window.minSize = NSSize(width: minimumWindowSide, height: minimumWindowSide)
+        window.contentAspectRatio = NSSize(width: 1, height: 1)
+        window.aspectRatio = NSSize(width: 1, height: 1)
+        window.contentView = glassView
+        window.setContentSize(NSSize(width: defaultWindowSide, height: defaultWindowSide))
         window.delegate = self
         window.level = .popUpMenu
         window.isMovableByWindowBackground = true
@@ -154,20 +182,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func applyLaunchFrame() {
         guard let window else { return }
-        window.setContentSize(NSSize(width: 760, height: 860))
+        window.setContentSize(NSSize(width: defaultWindowSide, height: defaultWindowSide))
         window.center()
     }
 
     private func showWindow(activate: Bool) {
         guard let window else { return }
+        lastWindowPresentationDate = Date()
+        waitingForPresentedWindowActivation = activate && !NSApp.isActive
         window.level = .popUpMenu
         window.deminiaturize(nil)
         if activate {
             NSApp.unhide(nil)
+            NSRunningApplication.current.activate(options: [.activateAllWindows])
             NSApp.activate(ignoringOtherApps: true)
         }
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
+
+        if activate {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self else { return }
+                self.lastWindowPresentationDate = Date()
+                NSRunningApplication.current.activate(options: [.activateAllWindows])
+                NSApp.activate(ignoringOtherApps: true)
+                self.window?.makeKeyAndOrderFront(nil)
+            }
+        }
     }
 
     private var shouldCollapseForResumeHotkey: Bool {
@@ -179,6 +220,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         viewModel.pauseForManualDismissal()
         window?.miniaturize(nil)
         NSApp.hide(nil)
+    }
+
+    private func collapseWindowForFocusLossIfNeeded() {
+        guard viewModel.settings.minimizeOnFocusLoss,
+              let window,
+              window.isVisible,
+              !window.isMiniaturized,
+              !waitingForPresentedWindowActivation,
+              Date().timeIntervalSince(lastWindowPresentationDate) > 0.6
+        else {
+            return
+        }
+
+        window.miniaturize(nil)
+        NSApp.hide(nil)
+    }
+
+    private func collapseWindowIfNeeded(for frontmostApplication: NSRunningApplication?) {
+        guard let frontmostApplication else { return }
+        guard !NSApp.isActive else { return }
+
+        if frontmostApplication.processIdentifier == ProcessInfo.processInfo.processIdentifier {
+            return
+        }
+
+        if let bundleIdentifier = Bundle.main.bundleIdentifier,
+           frontmostApplication.bundleIdentifier == bundleIdentifier {
+            return
+        }
+
+        viewModel.applicationWillResignActive()
+        collapseWindowForFocusLossIfNeeded()
+    }
+
+    private func observeActiveApplicationChanges() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(activeApplicationDidChange(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+    }
+
+    private func startActiveApplicationMonitor() {
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.collapseWindowIfNeeded(for: NSWorkspace.shared.frontmostApplication)
+            }
+        }
+
+        activeAppMonitor = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func hideSystemWindowControls(for window: NSWindow) {
@@ -225,4 +318,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         item.target = self
         return item
     }
+}
+
+private final class PeekPairsWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
 }

@@ -59,7 +59,7 @@ final class GameViewModel: ObservableObject {
     }
 
     func tick(now: Date) {
-        guard game.phase == .running else {
+        guard game.phase == .running || game.hasPendingVisualEvents else {
             lastTickDate = nil
             return
         }
@@ -132,11 +132,17 @@ final class GameViewModel: ObservableObject {
     }
 
     func showSettings() {
+        pauseCurrentGame(shouldResumeOnActivation: false)
         isSettingsPresented = true
     }
 
     func update(boardSize: BoardSize) {
         settings.boardSize = boardSize
+        persistSettings()
+    }
+
+    func update(minimizeOnFocusLoss: Bool) {
+        settings.minimizeOnFocusLoss = minimizeOnFocusLoss
         persistSettings()
     }
 
