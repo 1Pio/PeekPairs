@@ -12,6 +12,38 @@ struct MemoryGameEngineTests {
         let second = MemoryGameEngine(boardSize: boardSize, seed: 42, assetNames: assets, startsRunning: true)
 
         #expect(first.cards.map(\.pairID) == second.cards.map(\.pairID))
+        #expect(first.cards.map(\.assetName) == second.cards.map(\.assetName))
+    }
+
+    @Test("each round samples pair assets from the full catalog")
+    func samplesPairAssetsFromFullCatalog() throws {
+        let boardSize = try BoardSize(4)
+        let firstSlice = Set(assets.prefix(boardSize.pairCount))
+        let sampledAssets = Set(
+            (1...16).flatMap { seed in
+                MemoryGameEngine(
+                    boardSize: boardSize,
+                    seed: UInt64(seed),
+                    assetNames: assets,
+                    startsRunning: true
+                )
+                .cards
+                .map(\.assetName)
+            }
+        )
+
+        #expect(sampledAssets.count > boardSize.pairCount)
+        #expect(!sampledAssets.isSubset(of: firstSlice))
+    }
+
+    @Test("sampled assets still form exact pairs")
+    func sampledAssetsStillFormExactPairs() throws {
+        let boardSize = try BoardSize(4)
+        let game = MemoryGameEngine(boardSize: boardSize, seed: 21, assetNames: assets, startsRunning: true)
+        let assetCounts = Dictionary(grouping: game.cards, by: \.assetName).mapValues(\.count)
+
+        #expect(assetCounts.count == boardSize.pairCount)
+        #expect(assetCounts.values.allSatisfy { $0 == 2 })
     }
 
     @Test("mismatch flips back after active time only")

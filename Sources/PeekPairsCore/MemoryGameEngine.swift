@@ -76,13 +76,15 @@ public struct MemoryGameEngine: Equatable, Sendable {
         self.matchedPairRemovalDueAt = [:]
         self.foundPairIDs = []
 
-        var pairDeck = (0..<boardSize.pairCount).flatMap { pairID in
+        var generator = SeededRandomNumberGenerator(seed: seed)
+        let selectedAssetNames = Array(assetNames.shuffled(using: &generator).prefix(boardSize.pairCount))
+
+        var pairDeck = selectedAssetNames.enumerated().flatMap { pairID, assetName in
             [
-                MemoryCard(id: pairID * 2, pairID: pairID, assetName: assetNames[pairID], visibility: .hidden),
-                MemoryCard(id: pairID * 2 + 1, pairID: pairID, assetName: assetNames[pairID], visibility: .hidden)
+                MemoryCard(id: pairID * 2, pairID: pairID, assetName: assetName, visibility: .hidden),
+                MemoryCard(id: pairID * 2 + 1, pairID: pairID, assetName: assetName, visibility: .hidden)
             ]
         }
-        var generator = SeededRandomNumberGenerator(seed: seed)
         pairDeck.shuffle(using: &generator)
         self.cards = pairDeck.enumerated().map { index, card in
             MemoryCard(id: index, pairID: card.pairID, assetName: card.assetName, visibility: .hidden)
