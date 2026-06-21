@@ -31,6 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         viewModel.updateHotkeyStatuses(hotkeyCenter?.register(bindings: viewModel.settings.hotkeys) ?? [:])
         showWindow(activate: true)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.applyLaunchFrame()
+            self?.showWindow(activate: true)
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -43,6 +48,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showWindow(activate: true)
+        return true
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -114,23 +128,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.title = "PeekPairs"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        window.isRestorable = false
+        window.isReleasedWhenClosed = false
         window.isOpaque = false
         window.backgroundColor = .clear
         window.minSize = NSSize(width: 480, height: 560)
         window.contentView = effectView
+        window.setContentSize(NSSize(width: 760, height: 860))
         window.delegate = self
-        window.collectionBehavior = [.managed, .fullScreenPrimary]
+        window.collectionBehavior = [.managed, .moveToActiveSpace, .fullScreenPrimary]
         window.center()
 
         self.window = window
     }
 
+    private func applyLaunchFrame() {
+        guard let window else { return }
+        window.setContentSize(NSSize(width: 760, height: 860))
+        window.center()
+    }
+
     private func showWindow(activate: Bool) {
         guard let window else { return }
-        window.makeKeyAndOrderFront(nil)
+        window.deminiaturize(nil)
         if activate {
+            NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func buildMainMenu() {

@@ -7,7 +7,20 @@ struct SettingsSheetView: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            StatsCardView(summary: viewModel.statsSummary)
+            ZStack(alignment: .topTrailing) {
+                StatsCardView(summary: viewModel.statsSummary)
+
+                Button {
+                    viewModel.isSettingsPresented = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .buttonStyle(.glass)
+                .help("Close settings")
+                .padding(10)
+                .accessibilityIdentifier("close-settings-button")
+            }
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Default board")
@@ -90,19 +103,23 @@ private struct StatsCardView: View {
                 Text("\(summary.gamesPlayed) games")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white.opacity(0.56))
+                    .padding(.trailing, 30)
             }
 
             LazyVGrid(columns: columns, spacing: 10) {
                 StatCell(title: "Shortest", value: TimeFormatter.short.string(from: summary.shortest))
-                StatCell(title: "Avg", value: TimeFormatter.short.string(from: summary.average))
-                StatCell(title: "Median", value: TimeFormatter.short.string(from: summary.median))
-                StatCell(title: "Mean", value: TimeFormatter.short.string(from: summary.mean))
+                StatCell(title: "Average", value: TimeFormatter.short.string(from: summary.average))
+                StatCell(title: "Median / Mean", value: medianMeanText)
                 StatCell(title: "Last", value: TimeFormatter.short.string(from: summary.last))
                 StatCell(title: "Longest", value: TimeFormatter.short.string(from: summary.longest))
             }
         }
         .padding(16)
         .glassEffect(.regular.tint(Color.white.opacity(0.06)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var medianMeanText: String {
+        "\(TimeFormatter.short.string(from: summary.median)) / \(TimeFormatter.short.string(from: summary.mean))"
     }
 }
 

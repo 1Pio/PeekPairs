@@ -23,7 +23,7 @@ final class GameViewModel: ObservableObject {
         self.history = store.load(RoundHistory.self, from: .history, fallback: RoundHistory())
         self.game = MemoryGameEngine(
             boardSize: loadedSettings.boardSize,
-            seed: RandomSeed.make(),
+            seed: Self.nextSeed(),
             assetNames: CardAssetCatalog.names,
             startsRunning: false
         )
@@ -73,7 +73,7 @@ final class GameViewModel: ObservableObject {
     func startNewGame() {
         game = MemoryGameEngine(
             boardSize: settings.boardSize,
-            seed: RandomSeed.make(),
+            seed: Self.nextSeed(),
             assetNames: CardAssetCatalog.names,
             startsRunning: true
         )
@@ -86,7 +86,7 @@ final class GameViewModel: ObservableObject {
         if game.phase == .completed {
             game = MemoryGameEngine(
                 boardSize: settings.boardSize,
-                seed: RandomSeed.make(),
+                seed: Self.nextSeed(),
                 assetNames: CardAssetCatalog.names,
                 startsRunning: false
             )
@@ -161,5 +161,9 @@ final class GameViewModel: ObservableObject {
 
     private func persistSettings() {
         store.save(settings, to: .settings)
+    }
+
+    private static func nextSeed() -> UInt64 {
+        ProcessInfo.processInfo.environment["PEEKPAIRS_SEED"].flatMap(UInt64.init) ?? RandomSeed.make()
     }
 }
