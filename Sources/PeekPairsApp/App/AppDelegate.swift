@@ -179,7 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.setContentSize(NSSize(width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide))
         window.delegate = self
         window.level = .popUpMenu
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.tabbingMode = .disallowed
         window.collectionBehavior = [.managed, .moveToActiveSpace, .fullScreenPrimary]
         window.hasShadow = true

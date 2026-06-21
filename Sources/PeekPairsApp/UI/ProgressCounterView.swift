@@ -4,10 +4,14 @@ struct ProgressCounterView: View {
     @ObservedObject var viewModel: GameViewModel
 
     var body: some View {
-        HStack {
+        HStack(spacing: 0) {
             StopwatchPillView(elapsed: viewModel.formattedElapsed)
 
-            Spacer(minLength: 20)
+            Spacer(minLength: 10)
+
+            GameControlsView(viewModel: viewModel)
+
+            Spacer(minLength: 10)
 
             PairCounterPillView(
                 progressText: viewModel.progressText,
@@ -31,7 +35,7 @@ private struct StopwatchPillView: View {
                 .frame(width: 76, alignment: .leading)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .frame(height: PeekPairsLayout.bottomChromeHeight)
         .glassEffect(.regular.tint(Color.white.opacity(0.06)), in: Capsule())
         .accessibilityIdentifier("stopwatch")
     }
@@ -42,20 +46,17 @@ private struct PairCounterPillView: View {
     let foundPairs: Int
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "square.grid.2x2")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.7))
+        HStack(spacing: 4) {
             Text(progressText)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
                 .contentTransition(.numericText())
-                .frame(width: 74)
+                .frame(minWidth: 58, alignment: .trailing)
             Text("pairs")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.56))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .frame(height: PeekPairsLayout.bottomChromeHeight)
         .glassEffect(.regular.tint(Color.white.opacity(0.055)), in: Capsule())
         .animation(.bouncy(duration: 0.36, extraBounce: 0.22), value: foundPairs)
         .accessibilityIdentifier("pair-counter")

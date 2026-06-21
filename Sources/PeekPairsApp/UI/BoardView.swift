@@ -62,6 +62,7 @@ struct BoardView: View {
             }
             .frame(width: side, height: side)
             .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+            .contentShape(boardShape)
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityIdentifier("game-board")

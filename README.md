@@ -18,7 +18,7 @@ The packaged app is written to `dist/PeekPairs.app`.
 
 ## Release App
 
-The current downloadable app archive is tracked at `release/PeekPairs.app.zip`.
+The current downloadable app archive is tracked at `release/PeekPairs.app.zip` and currently packages PeekPairs `0.1.1`.
 
 To rebuild the release archive and update the local app in `/Applications`:
 

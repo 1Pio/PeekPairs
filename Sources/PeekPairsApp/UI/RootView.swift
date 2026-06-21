@@ -9,19 +9,24 @@ struct RootView: View {
     var body: some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
+            let availableSide = max(0, side - (PeekPairsLayout.contentPadding * 2))
+            let boardSide = max(
+                0,
+                availableSide - PeekPairsLayout.bottomChromeHeight - PeekPairsLayout.boardToControlsSpacing
+            )
 
             ZStack {
-                BoardView(viewModel: viewModel)
-                    .padding(PeekPairsLayout.boardInset)
+                WindowDragSurface()
+                    .frame(width: side, height: side)
 
-                TopBarView(viewModel: viewModel)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .padding(.top, PeekPairsLayout.chromeInset)
+                VStack(spacing: PeekPairsLayout.boardToControlsSpacing) {
+                    BoardView(viewModel: viewModel)
+                        .frame(width: boardSide, height: boardSide)
 
-                ProgressCounterView(viewModel: viewModel)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.horizontal, PeekPairsLayout.boardInset)
-                    .padding(.bottom, PeekPairsLayout.chromeInset)
+                    ProgressCounterView(viewModel: viewModel)
+                        .frame(width: availableSide, height: PeekPairsLayout.bottomChromeHeight)
+                }
+                .padding(PeekPairsLayout.contentPadding)
 
                 if viewModel.isSettingsPresented {
                     Color.black.opacity(0.28)
@@ -30,7 +35,7 @@ struct RootView: View {
                         .zIndex(1)
 
                     SettingsSheetView(viewModel: viewModel)
-                        .frame(width: min(520, side - 40))
+                        .frame(width: min(520, side - (PeekPairsLayout.contentPadding * 2)))
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
                         .zIndex(2)
                 }
