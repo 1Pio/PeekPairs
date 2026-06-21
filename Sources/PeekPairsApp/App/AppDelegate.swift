@@ -164,7 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        appMenu.addItem(appCommand(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         appMenu.addItem(.separator())
         appMenu.addItem(NSMenuItem(title: "Hide PeekPairs", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
         appMenu.addItem(NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h"))
@@ -177,12 +177,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let gameItem = NSMenuItem()
         let gameMenu = NSMenu(title: "Game")
-        gameMenu.addItem(NSMenuItem(title: "New Game", action: #selector(startNewGame), keyEquivalent: "n"))
-        gameMenu.addItem(NSMenuItem(title: "Open Paused Board", action: #selector(openPausedBoard), keyEquivalent: ""))
-        gameMenu.addItem(NSMenuItem(title: "Resume or Start", action: #selector(resumeOrStartGame), keyEquivalent: "r"))
+        gameMenu.addItem(appCommand(title: "New Game", action: #selector(startNewGame), keyEquivalent: "n"))
+        gameMenu.addItem(appCommand(title: "Open Paused Board", action: #selector(openPausedBoard), keyEquivalent: ""))
+        gameMenu.addItem(appCommand(title: "Resume or Start", action: #selector(resumeOrStartGame), keyEquivalent: "r"))
         gameItem.submenu = gameMenu
         mainMenu.addItem(gameItem)
 
         NSApp.mainMenu = mainMenu
+    }
+
+    private func appCommand(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        return item
     }
 }
