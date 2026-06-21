@@ -5,9 +5,6 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    private let defaultWindowSide: CGFloat = 760
-    private let minimumWindowSide: CGFloat = 520
-
     private let viewModel = GameViewModel()
     private var window: NSWindow?
     private var hotkeyCenter: GlobalHotkeyCenter?
@@ -80,8 +77,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let widthDelta = abs(frameSize.width - currentSize.width)
         let heightDelta = abs(frameSize.height - currentSize.height)
         let proposedSide = widthDelta > heightDelta ? frameSize.width : frameSize.height
-        let side = max(minimumWindowSide, proposedSide)
+        let side = max(PeekPairsLayout.minimumWindowSide, proposedSide)
         return NSSize(width: side, height: side)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        window?.invalidateShadow()
     }
 
     @objc private func openSettings() {
@@ -139,12 +140,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let glassView = NSGlassEffectView()
         glassView.style = .regular
-        glassView.cornerRadius = 0
+        glassView.cornerRadius = PeekPairsLayout.windowCornerRadius
         glassView.tintColor = NSColor.white.withAlphaComponent(0.035)
         glassView.translatesAutoresizingMaskIntoConstraints = false
         glassView.contentView = hostingView
+        glassView.wantsLayer = true
+        glassView.layer?.cornerRadius = PeekPairsLayout.windowCornerRadius
+        glassView.layer?.cornerCurve = .continuous
+        glassView.layer?.masksToBounds = true
 
         hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.layer?.cornerRadius = PeekPairsLayout.windowCornerRadius
+        hostingView.layer?.cornerCurve = .continuous
+        hostingView.layer?.masksToBounds = true
         NSLayoutConstraint.activate([
             hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
             hostingView.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
@@ -153,7 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         ])
 
         let window = PeekPairsWindow(
-            contentRect: NSRect(x: 0, y: 0, width: defaultWindowSide, height: defaultWindowSide),
+            contentRect: NSRect(x: 0, y: 0, width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide),
             styleMask: [.borderless, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -164,17 +172,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.minSize = NSSize(width: minimumWindowSide, height: minimumWindowSide)
+        window.minSize = NSSize(width: PeekPairsLayout.minimumWindowSide, height: PeekPairsLayout.minimumWindowSide)
         window.contentAspectRatio = NSSize(width: 1, height: 1)
         window.aspectRatio = NSSize(width: 1, height: 1)
         window.contentView = glassView
-        window.setContentSize(NSSize(width: defaultWindowSide, height: defaultWindowSide))
+        window.setContentSize(NSSize(width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide))
         window.delegate = self
         window.level = .popUpMenu
         window.isMovableByWindowBackground = true
         window.tabbingMode = .disallowed
         window.collectionBehavior = [.managed, .moveToActiveSpace, .fullScreenPrimary]
+        window.hasShadow = true
         window.center()
+        window.invalidateShadow()
         hideSystemWindowControls(for: window)
 
         self.window = window
@@ -182,8 +192,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func applyLaunchFrame() {
         guard let window else { return }
-        window.setContentSize(NSSize(width: defaultWindowSide, height: defaultWindowSide))
+        window.setContentSize(NSSize(width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide))
         window.center()
+        window.invalidateShadow()
     }
 
     private func showWindow(activate: Bool) {

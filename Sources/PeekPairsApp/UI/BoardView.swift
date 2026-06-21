@@ -14,13 +14,14 @@ struct BoardView: View {
     var body: some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
+            let boardShape = RoundedRectangle(cornerRadius: PeekPairsLayout.boardCornerRadius, style: .continuous)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                boardShape
                     .fill(.ultraThinMaterial)
-                    .glassEffect(.regular.tint(Color.white.opacity(0.025)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .glassEffect(.regular.tint(Color.white.opacity(0.025)), in: boardShape)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        boardShape
                             .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
                     }
 

@@ -5,8 +5,6 @@ struct RootView: View {
     @ObservedObject var viewModel: GameViewModel
 
     private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
-    private let boardInset: CGFloat = 64
-    private let chromeInset: CGFloat = 16
 
     var body: some View {
         GeometryReader { proxy in
@@ -14,16 +12,16 @@ struct RootView: View {
 
             ZStack {
                 BoardView(viewModel: viewModel)
-                    .padding(boardInset)
+                    .padding(PeekPairsLayout.boardInset)
 
                 TopBarView(viewModel: viewModel)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .padding(.top, chromeInset)
+                    .padding(.top, PeekPairsLayout.chromeInset)
 
                 ProgressCounterView(viewModel: viewModel)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.horizontal, boardInset)
-                    .padding(.bottom, chromeInset)
+                    .padding(.horizontal, PeekPairsLayout.boardInset)
+                    .padding(.bottom, PeekPairsLayout.chromeInset)
 
                 if viewModel.isSettingsPresented {
                     Color.black.opacity(0.28)
@@ -40,7 +38,7 @@ struct RootView: View {
             .frame(width: side, height: side)
             .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
         }
-        .frame(minWidth: 520, minHeight: 520)
+        .frame(minWidth: PeekPairsLayout.minimumWindowSide, minHeight: PeekPairsLayout.minimumWindowSide)
         .background(Color.clear)
         .preferredColorScheme(.dark)
         .onReceive(timer) { now in

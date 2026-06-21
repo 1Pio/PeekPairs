@@ -16,6 +16,18 @@ open dist/PeekPairs.app
 
 The packaged app is written to `dist/PeekPairs.app`.
 
+## Release App
+
+The current downloadable app archive is tracked at `release/PeekPairs.app.zip`.
+
+To rebuild the release archive and update the local app in `/Applications`:
+
+```sh
+scripts/build-release.sh
+```
+
+The release script creates `release/PeekPairs.app.zip`, writes `release/PeekPairs.app.zip.sha256`, and installs the current build to `/Applications/PeekPairs.app`. The app is ad-hoc signed for local use; a public Developer ID notarized release would require Apple signing credentials.
+
 ## Controls
 
 - Gear button or `Command-,`: settings popup

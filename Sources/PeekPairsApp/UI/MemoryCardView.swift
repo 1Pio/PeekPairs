@@ -139,7 +139,8 @@ private struct CardFigureImage: View {
     }
 
     private func loadImage() -> NSImage? {
-        let url = Bundle.module.url(forResource: assetName, withExtension: "png")
+        let url = Bundle.main.url(forResource: assetName, withExtension: "png", subdirectory: "CardFigures")
+            ?? Bundle.module.url(forResource: assetName, withExtension: "png")
             ?? Bundle.module.url(
                 forResource: assetName,
                 withExtension: "png",
