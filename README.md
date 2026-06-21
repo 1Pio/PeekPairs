@@ -18,7 +18,7 @@ The packaged app is written to `dist/PeekPairs.app`.
 
 ## Release App
 
-The current downloadable app archive is tracked at `release/PeekPairs.app.zip` and currently packages PeekPairs `0.1.1`.
+The current downloadable app archive is tracked at `release/PeekPairs.app.zip` and currently packages PeekPairs `0.1.2`.
 
 To rebuild the release archive and update the local app in `/Applications`:
 
@@ -33,7 +33,7 @@ The release script creates `release/PeekPairs.app.zip`, writes `release/PeekPair
 - Gear button or `Command-,`: settings popup
 - Plus button: new round
 - Play/pause button: resume or pause the current round
-- Settings include default board size, global shortcuts, and the focus-loss minimize toggle.
+- Settings include default board size, default app window width, global shortcuts, and the focus-loss minimize toggle.
 - Default global shortcuts:
   - `Control-Option-Command-M`: open paused board
   - `Control-Option-Command-N`: open and start a new game

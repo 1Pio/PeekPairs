@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var activeAppMonitor: Timer?
     private var lastWindowPresentationDate = Date.distantPast
     private var waitingForPresentedWindowActivation = false
+    private var lastAppliedDefaultWindowWidth: Double?
     private var cancellables: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -31,6 +32,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self else { return }
                 let statuses = self.hotkeyCenter?.register(bindings: settings.hotkeys) ?? [:]
                 self.viewModel.updateHotkeyStatuses(statuses)
+                self.applyDefaultWindowWidthIfNeeded(settings.defaultWindowWidth)
+            }
+            .store(in: &cancellables)
+
+        viewModel.$isSettingsPresented
+            .sink { [weak self] isPresented in
+                guard let self, isPresented else { return }
+                self.resizeWindow(toDefaultWidth: self.viewModel.settings.defaultWindowWidth, animated: true)
             }
             .store(in: &cancellables)
 
@@ -76,9 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let currentSize = sender.frame.size
         let widthDelta = abs(frameSize.width - currentSize.width)
         let heightDelta = abs(frameSize.height - currentSize.height)
-        let proposedSide = widthDelta > heightDelta ? frameSize.width : frameSize.height
-        let side = max(PeekPairsLayout.minimumWindowSide, proposedSide)
-        return NSSize(width: side, height: side)
+        let proposedWidth = widthDelta > heightDelta
+            ? frameSize.width
+            : frameSize.height - PeekPairsLayout.bottomChromeTotalHeight
+        let width = max(PeekPairsLayout.minimumWindowWidth, proposedWidth)
+        return NSSize(width: width, height: PeekPairsLayout.windowHeight(forWidth: width))
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -133,6 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func createWindow() {
+        let windowSize = PeekPairsLayout.windowSize(forDefaultWidth: viewModel.settings.defaultWindowWidth)
         let rootView = RootView(viewModel: viewModel)
         let hostingView = NSHostingView(rootView: rootView)
         hostingView.wantsLayer = true
@@ -161,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         ])
 
         let window = PeekPairsWindow(
-            contentRect: NSRect(x: 0, y: 0, width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide),
+            contentRect: NSRect(origin: .zero, size: windowSize),
             styleMask: [.borderless, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -172,11 +184,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.minSize = NSSize(width: PeekPairsLayout.minimumWindowSide, height: PeekPairsLayout.minimumWindowSide)
-        window.contentAspectRatio = NSSize(width: 1, height: 1)
-        window.aspectRatio = NSSize(width: 1, height: 1)
+        window.minSize = NSSize(
+            width: PeekPairsLayout.minimumWindowWidth,
+            height: PeekPairsLayout.windowHeight(forWidth: PeekPairsLayout.minimumWindowWidth)
+        )
         window.contentView = glassView
-        window.setContentSize(NSSize(width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide))
+        window.setContentSize(windowSize)
         window.delegate = self
         window.level = .popUpMenu
         window.isMovableByWindowBackground = false
@@ -187,13 +200,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.invalidateShadow()
         hideSystemWindowControls(for: window)
 
+        lastAppliedDefaultWindowWidth = viewModel.settings.defaultWindowWidth
         self.window = window
     }
 
     private func applyLaunchFrame() {
         guard let window else { return }
-        window.setContentSize(NSSize(width: PeekPairsLayout.windowSide, height: PeekPairsLayout.windowSide))
+        window.setContentSize(PeekPairsLayout.windowSize(forDefaultWidth: viewModel.settings.defaultWindowWidth))
         window.center()
+        window.invalidateShadow()
+    }
+
+    private func applyDefaultWindowWidthIfNeeded(_ width: Double) {
+        guard lastAppliedDefaultWindowWidth != width else { return }
+        lastAppliedDefaultWindowWidth = width
+        resizeWindow(toDefaultWidth: width, animated: true)
+    }
+
+    private func resizeWindow(toDefaultWidth width: Double, animated: Bool) {
+        guard let window else { return }
+        let size = PeekPairsLayout.windowSize(forDefaultWidth: width)
+        let currentFrame = window.frame
+        let newFrame = NSRect(
+            x: currentFrame.midX - (size.width / 2),
+            y: currentFrame.midY - (size.height / 2),
+            width: size.width,
+            height: size.height
+        )
+        window.setFrame(newFrame, display: true, animate: animated)
         window.invalidateShadow()
     }
 

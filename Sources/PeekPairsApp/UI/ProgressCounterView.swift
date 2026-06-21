@@ -46,16 +46,17 @@ private struct PairCounterPillView: View {
     let foundPairs: Int
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(progressText)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
                 .contentTransition(.numericText())
-                .frame(minWidth: 58, alignment: .trailing)
+                .monospacedDigit()
             Text("pairs")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.56))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.54))
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
+        .frame(width: 124)
         .frame(height: PeekPairsLayout.bottomChromeHeight)
         .glassEffect(.regular.tint(Color.white.opacity(0.055)), in: Capsule())
         .animation(.bouncy(duration: 0.36, extraBounce: 0.22), value: foundPairs)

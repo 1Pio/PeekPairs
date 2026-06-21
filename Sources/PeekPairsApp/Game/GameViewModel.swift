@@ -146,6 +146,11 @@ final class GameViewModel: ObservableObject {
         persistSettings()
     }
 
+    func update(defaultWindowWidth: Double) {
+        settings.defaultWindowWidth = AppSettings.clampedDefaultWindowWidth(defaultWindowWidth)
+        persistSettings()
+    }
+
     func updateHotkey(_ binding: HotkeyBinding, for action: HotkeyAction) {
         settings.hotkeys[action] = binding
         persistSettings()

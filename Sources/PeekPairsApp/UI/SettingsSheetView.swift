@@ -22,19 +22,40 @@ struct SettingsSheetView: View {
                 .accessibilityIdentifier("close-settings-button")
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Default board")
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Defaults")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.72))
 
-                Picker("Default board", selection: boardSizeBinding) {
-                    ForEach(BoardSize.presets) { size in
-                        Text(size.label).tag(size)
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Default board", selection: boardSizeBinding) {
+                        ForEach(BoardSize.presets) { size in
+                            Text(size.label).tag(size)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityIdentifier("board-size-picker")
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("App window width")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.68))
+                            Spacer()
+                            Text("\(Int(viewModel.settings.defaultWindowWidth)) pt")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.72))
+                        }
+
+                        Slider(
+                            value: defaultWindowWidthBinding,
+                            in: AppSettings.defaultWindowWidthRange,
+                            step: 20
+                        )
+                        .accessibilityIdentifier("default-window-width-slider")
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityIdentifier("board-size-picker")
             }
             .settingsSectionGlass()
 
@@ -110,6 +131,13 @@ struct SettingsSheetView: View {
         Binding(
             get: { viewModel.settings.minimizeOnFocusLoss },
             set: { viewModel.update(minimizeOnFocusLoss: $0) }
+        )
+    }
+
+    private var defaultWindowWidthBinding: Binding<Double> {
+        Binding(
+            get: { viewModel.settings.defaultWindowWidth },
+            set: { viewModel.update(defaultWindowWidth: $0) }
         )
     }
 }

@@ -8,25 +8,34 @@ struct RootView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height)
-            let availableSide = max(0, side - (PeekPairsLayout.contentPadding * 2))
+            let availableWidth = max(0, proxy.size.width - (PeekPairsLayout.contentPadding * 2))
+            let availableBoardHeight = max(
+                0,
+                proxy.size.height
+                    - (PeekPairsLayout.contentPadding * 2)
+                    - PeekPairsLayout.boardToControlsSpacing
+                    - PeekPairsLayout.bottomChromeHeight
+            )
             let boardSide = max(
                 0,
-                availableSide - PeekPairsLayout.bottomChromeHeight - PeekPairsLayout.boardToControlsSpacing
+                min(availableWidth, availableBoardHeight)
             )
 
             ZStack {
                 WindowDragSurface()
-                    .frame(width: side, height: side)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
 
                 VStack(spacing: PeekPairsLayout.boardToControlsSpacing) {
                     BoardView(viewModel: viewModel)
                         .frame(width: boardSide, height: boardSide)
 
                     ProgressCounterView(viewModel: viewModel)
-                        .frame(width: availableSide, height: PeekPairsLayout.bottomChromeHeight)
+                        .frame(width: availableWidth, height: PeekPairsLayout.bottomChromeHeight)
                 }
-                .padding(PeekPairsLayout.contentPadding)
+                .frame(width: availableWidth)
+                .padding(.horizontal, PeekPairsLayout.contentPadding)
+                .padding(.top, PeekPairsLayout.contentPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
                 if viewModel.isSettingsPresented {
                     Color.black.opacity(0.28)
@@ -35,15 +44,18 @@ struct RootView: View {
                         .zIndex(1)
 
                     SettingsSheetView(viewModel: viewModel)
-                        .frame(width: min(520, side - (PeekPairsLayout.contentPadding * 2)))
+                        .frame(width: min(520, proxy.size.width - (PeekPairsLayout.contentPadding * 2)))
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
                         .zIndex(2)
                 }
             }
-            .frame(width: side, height: side)
+            .frame(width: proxy.size.width, height: proxy.size.height)
             .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
         }
-        .frame(minWidth: PeekPairsLayout.minimumWindowSide, minHeight: PeekPairsLayout.minimumWindowSide)
+        .frame(
+            minWidth: PeekPairsLayout.minimumWindowWidth,
+            minHeight: PeekPairsLayout.windowHeight(forWidth: PeekPairsLayout.minimumWindowWidth)
+        )
         .background(Color.clear)
         .preferredColorScheme(.dark)
         .onReceive(timer) { now in

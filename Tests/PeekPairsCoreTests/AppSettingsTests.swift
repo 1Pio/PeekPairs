@@ -35,7 +35,24 @@ struct AppSettingsTests {
         let settings = try JSONDecoder().decode(AppSettings.self, from: data)
 
         #expect(settings.boardSize.dimension == 6)
+        #expect(settings.defaultWindowWidth == AppSettings.defaultWindowWidth)
         #expect(settings.minimizeOnFocusLoss == true)
         #expect(settings.hotkeys[.resumeOrStartGame]?.displayText == "⌃⌥⌘P")
+    }
+
+    @Test("default app window width is clamped while decoding")
+    func defaultWindowWidthClampsWhileDecoding() throws {
+        let data = """
+        {
+          "boardSize" : { "dimension" : 6 },
+          "defaultWindowWidth" : 2400,
+          "hotkeys" : [],
+          "minimizeOnFocusLoss" : true
+        }
+        """.data(using: .utf8)!
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        #expect(settings.defaultWindowWidth == AppSettings.maximumDefaultWindowWidth)
     }
 }
