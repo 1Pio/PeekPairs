@@ -1,9 +1,11 @@
 import AppKit
 import Foundation
+import ImageIO
 
 @MainActor
 final class CardFigureImageStore {
     static let shared = CardFigureImageStore()
+    private static let maximumRenderedPixelSize = 320
 
     private var imagesByName: [String: NSImage] = [:]
     private var missingNames: Set<String> = []
@@ -41,11 +43,36 @@ final class CardFigureImageStore {
                 subdirectory: "CardFigures"
             )
 
-        guard let url, let image = NSImage(contentsOf: url) else {
+        guard let url else {
             return nil
         }
 
+        let image = downsampledImage(from: url) ?? NSImage(contentsOf: url)
+        guard let image else { return nil }
+
         image.cacheMode = .always
         return image
+    }
+
+    private func downsampledImage(from url: URL) -> NSImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return nil
+        }
+
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: Self.maximumRenderedPixelSize
+        ]
+
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+
+        return NSImage(
+            cgImage: image,
+            size: NSSize(width: image.width, height: image.height)
+        )
     }
 }
