@@ -4,15 +4,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_ICON="$ROOT_DIR/Sources/PeekPairsApp/Resources/AppIcon/PeekPairsIcon.png"
 OUTPUT_ICON="${1:-$ROOT_DIR/build/PeekPairs.icns}"
-ICONSET_DIR="$ROOT_DIR/build/PeekPairs.iconset"
+BUILD_DIR="$ROOT_DIR/build"
 
 if [[ ! -f "$SOURCE_ICON" ]]; then
     echo "Missing icon source: $SOURCE_ICON" >&2
     exit 1
 fi
 
-rm -rf "$ICONSET_DIR"
-mkdir -p "$ICONSET_DIR" "$(dirname "$OUTPUT_ICON")"
+mkdir -p "$BUILD_DIR" "$(dirname "$OUTPUT_ICON")"
+TMP_DIR="$(mktemp -d "$BUILD_DIR/PeekPairsIcon.XXXXXX")"
+ICONSET_DIR="$TMP_DIR/PeekPairs.iconset"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+mkdir -p "$ICONSET_DIR"
 
 sips -z 16 16 "$SOURCE_ICON" --out "$ICONSET_DIR/icon_16x16.png" >/dev/null
 sips -z 32 32 "$SOURCE_ICON" --out "$ICONSET_DIR/icon_16x16@2x.png" >/dev/null
