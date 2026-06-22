@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct GameControlsView: View {
-    @ObservedObject var viewModel: GameViewModel
+    @ObservedObject var state: GameControlsRenderState
+    let onShowSettings: () -> Void
+    let onTogglePauseResume: () -> Void
+    let onStartNewGame: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                viewModel.showSettings()
+                onShowSettings()
             } label: {
                 Image(systemName: "gearshape")
             }
@@ -15,16 +18,16 @@ struct GameControlsView: View {
             .accessibilityIdentifier("settings-button")
 
             Button {
-                viewModel.togglePauseResume()
+                onTogglePauseResume()
             } label: {
-                Image(systemName: viewModel.pauseResumeIconName)
+                Image(systemName: state.snapshot.pauseResumeIconName)
             }
             .buttonStyle(GlassCircleButtonStyle())
-            .help(viewModel.pauseResumeHelpText)
+            .help(state.snapshot.pauseResumeHelpText)
             .accessibilityIdentifier("pause-resume-button")
 
             Button {
-                viewModel.startNewGame()
+                onStartNewGame()
             } label: {
                 Image(systemName: "arrow.clockwise")
             }

@@ -1,35 +1,42 @@
 import SwiftUI
 
 struct ProgressCounterView: View {
-    @ObservedObject var viewModel: GameViewModel
+    let stopwatchState: StopwatchRenderState
+    let pairProgressState: PairProgressRenderState
+    let controlsState: GameControlsRenderState
+    let onShowSettings: () -> Void
+    let onTogglePauseResume: () -> Void
+    let onStartNewGame: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            StopwatchPillView(elapsed: viewModel.formattedElapsed)
+            StopwatchPillView(state: stopwatchState)
 
             Spacer(minLength: 10)
 
-            GameControlsView(viewModel: viewModel)
-
-            Spacer(minLength: 10)
-
-            PairCounterPillView(
-                progressText: viewModel.progressText,
-                foundPairs: viewModel.game.foundPairs
+            GameControlsView(
+                state: controlsState,
+                onShowSettings: onShowSettings,
+                onTogglePauseResume: onTogglePauseResume,
+                onStartNewGame: onStartNewGame
             )
+
+            Spacer(minLength: 10)
+
+            PairCounterPillView(state: pairProgressState)
         }
     }
 }
 
 private struct StopwatchPillView: View {
-    let elapsed: String
+    @ObservedObject var state: StopwatchRenderState
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "stopwatch")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.78))
-            Text(elapsed)
+            Text(state.elapsedText)
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
                 .contentTransition(.numericText())
                 .frame(width: 76, alignment: .leading)
@@ -42,12 +49,11 @@ private struct StopwatchPillView: View {
 }
 
 private struct PairCounterPillView: View {
-    let progressText: String
-    let foundPairs: Int
+    @ObservedObject var state: PairProgressRenderState
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(progressText)
+            Text(state.snapshot.progressText)
                 .font(.system(size: 17, weight: .heavy, design: .rounded))
                 .contentTransition(.numericText())
                 .monospacedDigit()
@@ -59,7 +65,7 @@ private struct PairCounterPillView: View {
         .frame(width: 124)
         .frame(height: PeekPairsLayout.bottomChromeHeight)
         .glassEffect(.regular.tint(Color.white.opacity(0.055)), in: Capsule())
-        .animation(.bouncy(duration: 0.36, extraBounce: 0.22), value: foundPairs)
+        .animation(.bouncy(duration: 0.36, extraBounce: 0.22), value: state.snapshot.foundPairs)
         .accessibilityIdentifier("pair-counter")
     }
 }

@@ -26,10 +26,21 @@ struct RootView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
 
                 VStack(spacing: PeekPairsLayout.boardToControlsSpacing) {
-                    BoardView(viewModel: viewModel)
+                    BoardView(
+                        state: viewModel.boardState,
+                        onSelect: viewModel.select(cardID:),
+                        onResumeFromBoardTap: viewModel.resumeFromBoardTap
+                    )
                         .frame(width: boardSide, height: boardSide)
 
-                    ProgressCounterView(viewModel: viewModel)
+                    ProgressCounterView(
+                        stopwatchState: viewModel.stopwatchState,
+                        pairProgressState: viewModel.pairProgressState,
+                        controlsState: viewModel.controlsState,
+                        onShowSettings: viewModel.showSettings,
+                        onTogglePauseResume: viewModel.togglePauseResume,
+                        onStartNewGame: viewModel.startNewGame
+                    )
                         .frame(width: availableWidth, height: PeekPairsLayout.bottomChromeHeight)
                 }
                 .frame(width: availableWidth)

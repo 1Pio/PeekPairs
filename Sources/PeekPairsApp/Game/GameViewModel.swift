@@ -5,15 +5,20 @@ import SwiftUI
 
 @MainActor
 final class GameViewModel: ObservableObject {
-    @Published private(set) var game: MemoryGameEngine
     @Published var settings: AppSettings
     @Published private(set) var history: RoundHistory
     @Published var isSettingsPresented = false
     @Published private(set) var hotkeyStatuses: [HotkeyAction: HotkeyRegistrationStatus] = [:]
-    @Published private(set) var boardAnimationToken = 0
+
+    private(set) var game: MemoryGameEngine
+    let boardState: BoardRenderState
+    let stopwatchState: StopwatchRenderState
+    let pairProgressState: PairProgressRenderState
+    let controlsState: GameControlsRenderState
 
     private let store: AppFileStore
     private let cardImageStore: CardFigureImageStore
+    private var boardAnimationToken = 0
     private var lastTickDate: Date?
     private var shouldResumeAfterActivation = false
     private var hasSavedCurrentRound = false
@@ -25,14 +30,20 @@ final class GameViewModel: ObservableObject {
         self.store = store
         self.cardImageStore = cardImageStore
         let loadedSettings = store.load(AppSettings.self, from: .settings, fallback: .defaults)
-        self.settings = loadedSettings
-        self.history = store.load(RoundHistory.self, from: .history, fallback: RoundHistory())
-        self.game = MemoryGameEngine(
+        let loadedHistory = store.load(RoundHistory.self, from: .history, fallback: RoundHistory())
+        let initialGame = MemoryGameEngine(
             boardSize: loadedSettings.boardSize,
             seed: Self.nextSeed(),
             assetNames: CardAssetCatalog.names,
             startsRunning: false
         )
+        self.settings = loadedSettings
+        self.history = loadedHistory
+        self.game = initialGame
+        self.boardState = BoardRenderState(game: initialGame, appearanceToken: 0)
+        self.stopwatchState = StopwatchRenderState(elapsed: initialGame.elapsed)
+        self.pairProgressState = PairProgressRenderState(game: initialGame)
+        self.controlsState = GameControlsRenderState(game: initialGame)
         cardImageStore.preload(CardAssetCatalog.names)
     }
 
@@ -40,28 +51,8 @@ final class GameViewModel: ObservableObject {
         history.summary
     }
 
-    var formattedElapsed: String {
-        TimeFormatter.stopwatch.string(from: game.elapsed)
-    }
-
-    var progressText: String {
-        "\(game.foundPairs) / \(game.totalPairs)"
-    }
-
     var isBoardPaused: Bool {
         game.phase == .idle || game.phase == .paused
-    }
-
-    var isGameRunning: Bool {
-        game.phase == .running
-    }
-
-    var pauseResumeIconName: String {
-        isGameRunning ? "pause.fill" : "play.fill"
-    }
-
-    var pauseResumeHelpText: String {
-        isGameRunning ? "Pause game" : "Resume game"
     }
 
     func tick(now: Date) {
@@ -79,12 +70,14 @@ final class GameViewModel: ObservableObject {
         self.lastTickDate = now
 
         game.advance(by: min(delta, 0.25))
+        syncRenderState()
         saveRoundIfNeeded()
     }
 
     func select(cardID: Int) {
         withAnimation(.snappy(duration: 0.2)) {
             _ = game.selectCard(id: cardID)
+            syncRenderState()
         }
         saveRoundIfNeeded()
     }
@@ -100,8 +93,10 @@ final class GameViewModel: ObservableObject {
             resetGame(startsRunning: false)
         } else if game.phase == .running {
             game.pause()
+            syncRenderState()
         } else {
             game.setIdle()
+            syncRenderState()
         }
 
         shouldResumeAfterActivation = false
@@ -116,6 +111,7 @@ final class GameViewModel: ObservableObject {
 
         shouldResumeAfterActivation = true
         game.startOrResume()
+        syncRenderState()
         lastTickDate = Date()
     }
 
@@ -174,6 +170,7 @@ final class GameViewModel: ObservableObject {
     func applicationDidBecomeActive() {
         guard shouldResumeAfterActivation, game.phase == .paused || game.phase == .idle else { return }
         game.startOrResume()
+        syncRenderState()
         lastTickDate = Date()
     }
 
@@ -206,13 +203,22 @@ final class GameViewModel: ObservableObject {
         )
         boardAnimationToken &+= 1
         hasSavedCurrentRound = false
+        syncRenderState()
     }
 
     private func pauseCurrentGame(shouldResumeOnActivation: Bool) {
         guard game.phase == .running else { return }
         shouldResumeAfterActivation = shouldResumeOnActivation
         game.pause()
+        syncRenderState()
         lastTickDate = nil
+    }
+
+    private func syncRenderState() {
+        boardState.update(from: game, appearanceToken: boardAnimationToken)
+        stopwatchState.update(elapsed: game.elapsed)
+        pairProgressState.update(from: game)
+        controlsState.update(from: game)
     }
 
     private static func nextSeed() -> UInt64 {

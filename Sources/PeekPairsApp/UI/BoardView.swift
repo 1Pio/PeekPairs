@@ -2,12 +2,14 @@ import PeekPairsCore
 import SwiftUI
 
 struct BoardView: View {
-    @ObservedObject var viewModel: GameViewModel
+    @ObservedObject var state: BoardRenderState
+    let onSelect: (Int) -> Void
+    let onResumeFromBoardTap: () -> Void
 
     private var columns: [GridItem] {
         Array(
             repeating: GridItem(.flexible(minimum: 18), spacing: 8),
-            count: viewModel.game.boardSize.dimension
+            count: state.snapshot.boardSize.dimension
         )
     }
 
@@ -26,26 +28,26 @@ struct BoardView: View {
                     }
 
                 LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(Array(viewModel.game.cards.enumerated()), id: \.element.id) { index, card in
+                    ForEach(Array(state.snapshot.cards.enumerated()), id: \.element.id) { index, card in
                         MemoryCardView(
                             card: card,
-                            appearanceToken: viewModel.boardAnimationToken,
+                            appearanceToken: state.snapshot.appearanceToken,
                             appearanceDelay: appearanceDelay(for: index)
                         ) {
-                            viewModel.select(cardID: card.id)
+                            onSelect(card.id)
                         }
                         .aspectRatio(1, contentMode: .fit)
                         .accessibilityIdentifier("card-\(card.id)")
                     }
                 }
                 .padding(16)
-                .blur(radius: viewModel.isBoardPaused ? 9 : 0)
-                .saturation(viewModel.isBoardPaused ? 0.58 : 1)
-                .animation(.smooth(duration: viewModel.isBoardPaused ? 0.18 : 0.54), value: viewModel.isBoardPaused)
+                .blur(radius: state.snapshot.isPaused ? 9 : 0)
+                .saturation(state.snapshot.isPaused ? 0.58 : 1)
+                .animation(.smooth(duration: state.snapshot.isPaused ? 0.18 : 0.54), value: state.snapshot.isPaused)
 
-                if viewModel.isBoardPaused {
+                if state.snapshot.isPaused {
                     Button {
-                        viewModel.resumeFromBoardTap()
+                        onResumeFromBoardTap()
                     } label: {
                         Color.white.opacity(0.001)
                             .contentShape(Rectangle())
@@ -69,7 +71,7 @@ struct BoardView: View {
     }
 
     private func appearanceDelay(for index: Int) -> TimeInterval {
-        let dimension = viewModel.game.boardSize.dimension
+        let dimension = state.snapshot.boardSize.dimension
         let row = index / dimension
         let column = index % dimension
         return TimeInterval(row + column) * 0.034
