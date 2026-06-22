@@ -51,6 +51,7 @@ public struct MemoryGameEngine: Equatable, Sendable {
     private var mismatchHideAt: TimeInterval?
     private var matchedPairRemovalDueAt: [Int: TimeInterval]
     private var foundPairIDs: Set<Int>
+    private var cardIDsByPairID: [Int: [Int]]
 
     public var totalPairs: Int { boardSize.pairCount }
     public var foundPairs: Int { foundPairIDs.count }
@@ -75,6 +76,7 @@ public struct MemoryGameEngine: Equatable, Sendable {
         self.mismatchHideAt = nil
         self.matchedPairRemovalDueAt = [:]
         self.foundPairIDs = []
+        self.cardIDsByPairID = [:]
 
         var generator = SeededRandomNumberGenerator(seed: seed)
         let selectedAssetNames = Array(assetNames.shuffled(using: &generator).prefix(boardSize.pairCount))
@@ -89,6 +91,8 @@ public struct MemoryGameEngine: Equatable, Sendable {
         self.cards = pairDeck.enumerated().map { index, card in
             MemoryCard(id: index, pairID: card.pairID, assetName: card.assetName, visibility: .hidden)
         }
+        self.cardIDsByPairID = Dictionary(grouping: cards, by: \.pairID)
+            .mapValues { $0.map(\.id) }
     }
 
     public mutating func startOrResume() {
@@ -127,7 +131,7 @@ public struct MemoryGameEngine: Equatable, Sendable {
         guard phase == .running else { return .ignored }
         processDueEvents()
 
-        guard let selectedIndex = cards.firstIndex(where: { $0.id == id }),
+        guard let selectedIndex = index(forCardID: id),
               cards[selectedIndex].isSelectable
         else {
             return .ignored
@@ -146,8 +150,8 @@ public struct MemoryGameEngine: Equatable, Sendable {
 
         let firstID = revealedCardIDs[0]
         let secondID = revealedCardIDs[1]
-        let firstIndex = cards.firstIndex(where: { $0.id == firstID })!
-        let secondIndex = cards.firstIndex(where: { $0.id == secondID })!
+        let firstIndex = index(forCardID: firstID)!
+        let secondIndex = index(forCardID: secondID)!
 
         if cards[firstIndex].pairID == cards[secondIndex].pairID {
             let pairID = cards[firstIndex].pairID
@@ -183,7 +187,7 @@ public struct MemoryGameEngine: Equatable, Sendable {
 
     private mutating func hideVisibleMismatch() {
         for cardID in revealedCardIDs {
-            guard let index = cards.firstIndex(where: { $0.id == cardID }),
+            guard let index = index(forCardID: cardID),
                   cards[index].visibility == .revealed
             else { continue }
             cards[index].visibility = .hidden
@@ -195,8 +199,17 @@ public struct MemoryGameEngine: Equatable, Sendable {
     private mutating func removeMatchedPair(pairID: Int) {
         matchedPairRemovalDueAt[pairID] = nil
 
-        for index in cards.indices where cards[index].pairID == pairID {
+        for cardID in cardIDsByPairID[pairID, default: []] {
+            guard let index = index(forCardID: cardID) else { continue }
             cards[index].visibility = .removed
         }
+    }
+
+    private func index(forCardID cardID: Int) -> Int? {
+        guard cards.indices.contains(cardID), cards[cardID].id == cardID else {
+            return cards.firstIndex { $0.id == cardID }
+        }
+
+        return cardID
     }
 }
