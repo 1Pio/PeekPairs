@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         buildMainMenu()
         createWindow()
         observeActiveApplicationChanges()
-        startActiveApplicationMonitor()
+        updateActiveApplicationMonitor(isEnabled: viewModel.settings.minimizeOnFocusLoss)
 
         hotkeyCenter = GlobalHotkeyCenter { [weak self] action in
             Task { @MainActor in
@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let statuses = self.hotkeyCenter?.register(bindings: settings.hotkeys) ?? [:]
                 self.viewModel.updateHotkeyStatuses(statuses)
                 self.applyDefaultWindowWidthIfNeeded(settings.defaultWindowWidth)
+                self.updateActiveApplicationMonitor(isEnabled: settings.minimizeOnFocusLoss)
             }
             .store(in: &cancellables)
 
@@ -308,7 +309,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
     }
 
+    private func updateActiveApplicationMonitor(isEnabled: Bool) {
+        if isEnabled {
+            startActiveApplicationMonitor()
+        } else {
+            stopActiveApplicationMonitor()
+        }
+    }
+
     private func startActiveApplicationMonitor() {
+        guard activeAppMonitor == nil else { return }
+
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.collapseWindowIfNeeded(for: NSWorkspace.shared.frontmostApplication)
@@ -317,6 +328,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         activeAppMonitor = timer
         RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopActiveApplicationMonitor() {
+        activeAppMonitor?.invalidate()
+        activeAppMonitor = nil
     }
 
     private func hideSystemWindowControls(for window: NSWindow) {
