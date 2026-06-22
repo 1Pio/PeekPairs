@@ -10,6 +10,8 @@ struct MemoryCardView: View {
     @State private var isPressing = false
     @State private var hasAppeared = false
     @State private var appearanceTask: Task<Void, Never>?
+    @State private var keepsFaceContentVisible = false
+    @State private var faceContentTask: Task<Void, Never>?
 
     private var isRemoved: Bool {
         card.visibility == .removed
@@ -24,7 +26,11 @@ struct MemoryCardView: View {
                     .opacity(card.isFaceUp ? 0 : 1)
                     .rotation3DEffect(.degrees(card.isFaceUp ? -180 : 0), axis: (x: 0, y: 1, z: 0), perspective: 0.64)
 
-                CardFaceView(assetName: card.assetName, isMatched: card.visibility == .matched)
+                CardFaceView(
+                    assetName: card.assetName,
+                    isMatched: card.visibility == .matched,
+                    rendersFigure: card.isFaceUp || keepsFaceContentVisible
+                )
                     .opacity(card.isFaceUp ? 1 : 0)
                     .rotation3DEffect(.degrees(card.isFaceUp ? 0 : 180), axis: (x: 0, y: 1, z: 0), perspective: 0.64)
             }
@@ -47,14 +53,21 @@ struct MemoryCardView: View {
                 }
         )
         .onAppear {
+            resetFaceContentRetention()
             playAppearanceAnimation()
         }
         .onChange(of: appearanceToken) {
+            resetFaceContentRetention()
             playAppearanceAnimation()
+        }
+        .onChange(of: card.visibility) {
+            updateFaceContentRetention(for: card.visibility)
         }
         .onDisappear {
             appearanceTask?.cancel()
             appearanceTask = nil
+            faceContentTask?.cancel()
+            faceContentTask = nil
         }
     }
 
@@ -86,6 +99,35 @@ struct MemoryCardView: View {
         guard appearanceDelay > 0 else { return }
         let nanoseconds = UInt64(appearanceDelay * 1_000_000_000)
         try? await Task.sleep(nanoseconds: nanoseconds)
+    }
+
+    private func updateFaceContentRetention(for visibility: CardVisibility) {
+        faceContentTask?.cancel()
+
+        switch visibility {
+        case .revealed, .matched:
+            keepsFaceContentVisible = true
+        case .hidden:
+            clearFaceContent(after: 0.26)
+        case .removed:
+            clearFaceContent(after: 0.46)
+        }
+    }
+
+    private func resetFaceContentRetention() {
+        faceContentTask?.cancel()
+        faceContentTask = nil
+        keepsFaceContentVisible = card.isFaceUp
+    }
+
+    private func clearFaceContent(after delay: TimeInterval) {
+        keepsFaceContentVisible = true
+        faceContentTask = Task { @MainActor in
+            let nanoseconds = UInt64(delay * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            keepsFaceContentVisible = false
+        }
     }
 }
 
@@ -119,6 +161,7 @@ private struct CardBackView: View {
 private struct CardFaceView: View {
     let assetName: String
     let isMatched: Bool
+    let rendersFigure: Bool
 
     var body: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -128,9 +171,11 @@ private struct CardFaceView: View {
                     .strokeBorder(isMatched ? Color.mint.opacity(0.74) : Color.white.opacity(0.18), lineWidth: isMatched ? 2 : 1)
             }
             .overlay {
-                CardFigureImage(assetName: assetName)
-                    .padding(8)
-                    .shadow(color: .white.opacity(0.18), radius: 6)
+                if rendersFigure {
+                    CardFigureImage(assetName: assetName)
+                        .padding(8)
+                        .shadow(color: .white.opacity(0.18), radius: 6)
+                }
             }
             .shadow(color: isMatched ? Color.mint.opacity(0.18) : .black.opacity(0.26), radius: isMatched ? 14 : 9, y: 5)
             .glassEffect(.regular.tint(Color.white.opacity(0.035)), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
