@@ -155,15 +155,44 @@ private struct CardBackView: View {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.11),
+                                Color.white.opacity(0.02),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(.screen)
             }
             .overlay {
-                Image(systemName: "sparkle")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.26))
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
-            .glassEffect(.regular.tint(Color.white.opacity(0.03)), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                CardBackMark()
+            }
+    }
+}
+
+private struct CardBackMark: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                .frame(width: 20, height: 20)
+
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.25))
+                .frame(width: 3, height: 13)
+
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.25))
+                .frame(width: 13, height: 3)
+        }
     }
 }
 
@@ -182,7 +211,30 @@ private struct CardFaceView: View {
 
     private var faceContent: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(Color(red: 0.06, green: 0.075, blue: 0.09).opacity(0.96))
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.095, blue: 0.11),
+                        Color(red: 0.045, green: 0.055, blue: 0.07)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isMatched ? 0.13 : 0.08),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .center
+                        )
+                    )
+                    .blendMode(.screen)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .strokeBorder(isMatched ? Color.mint.opacity(0.74) : Color.white.opacity(0.18), lineWidth: isMatched ? 2 : 1)
@@ -190,18 +242,17 @@ private struct CardFaceView: View {
             .overlay {
                 CardFigureImage(assetName: assetName)
                     .padding(8)
-                    .shadow(color: .white.opacity(0.18), radius: 6)
+                    .shadow(color: .white.opacity(0.16), radius: 4)
             }
-            .shadow(color: isMatched ? Color.mint.opacity(0.18) : .black.opacity(0.26), radius: isMatched ? 14 : 9, y: 5)
-            .glassEffect(.regular.tint(Color.white.opacity(0.035)), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
 private struct CardFigureImage: View {
     let assetName: String
+    @ObservedObject private var store = CardFigureImageStore.shared
 
     var body: some View {
-        if let image = CardFigureImageStore.shared.image(named: assetName) {
+        if let image = store.image(named: assetName) {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFit()

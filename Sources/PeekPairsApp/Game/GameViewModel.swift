@@ -228,7 +228,9 @@ final class GameViewModel: ObservableObject {
     }
 
     private func preloadImages(for game: MemoryGameEngine) {
-        cardImageStore.preload(Set(game.cards.map(\.assetName)))
+        var seenAssetNames: Set<String> = []
+        let orderedAssetNames = game.cards.map(\.assetName).filter { seenAssetNames.insert($0).inserted }
+        cardImageStore.preload(orderedAssetNames)
     }
 
     private static func nextSeed() -> UInt64 {

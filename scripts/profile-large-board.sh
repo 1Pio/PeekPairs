@@ -21,7 +21,26 @@ cat > "$SUPPORT_DIR/PeekPairs/settings.json" <<JSON
     "dimension" : $BOARD_DIMENSION
   },
   "defaultWindowWidth" : $WINDOW_WIDTH,
-  "hotkeys" : [],
+  "hotkeys" : [
+    "startNewGame",
+    {
+      "carbonModifiers" : 6400,
+      "displayText" : "control-option-command-N",
+      "keyCode" : 45
+    },
+    "resumeOrStartGame",
+    {
+      "carbonModifiers" : 6400,
+      "displayText" : "control-option-command-P",
+      "keyCode" : 35
+    },
+    "openPausedBoard",
+    {
+      "carbonModifiers" : 6400,
+      "displayText" : "control-option-command-M",
+      "keyCode" : 46
+    }
+  ],
   "minimizeOnFocusLoss" : false
 }
 JSON
