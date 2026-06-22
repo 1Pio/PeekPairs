@@ -1,32 +1,11 @@
 import SwiftUI
 
 enum CardMotionTiming {
-    static let revealFlip = Animation.interactiveSpring(response: 0.19, dampingFraction: 0.74, blendDuration: 0.01)
-    static let hideFlip = Animation.interactiveSpring(response: 0.31, dampingFraction: 0.82, blendDuration: 0.02)
+    static let flip = Animation.interactiveSpring(response: 0.26, dampingFraction: 0.78, blendDuration: 0.02)
     static let quickSettle = Animation.interactiveSpring(response: 0.18, dampingFraction: 0.72, blendDuration: 0.01)
     static let matchSettle = Animation.bouncy(duration: 0.38, extraBounce: 0.16)
     static let remove = Animation.timingCurve(0.18, 0.88, 0.24, 1, duration: 0.34)
     static let entrance = Animation.bouncy(duration: 0.48, extraBounce: 0.16)
-}
-
-struct CardDepthLiftEffect: GeometryEffect {
-    var progress: CGFloat
-    var maxDepth: CGFloat = 34
-
-    var animatableData: CGFloat {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    func effectValue(size: CGSize) -> ProjectionTransform {
-        guard progress > 0.001 else { return ProjectionTransform(.identity) }
-
-        var transform = CATransform3DIdentity
-        transform.m34 = -1 / 760
-        transform = CATransform3DTranslate(transform, 0, -progress * 2.4, progress * maxDepth)
-
-        return ProjectionTransform(transform)
-    }
 }
 
 struct CardRecoilEffect: GeometryEffect {

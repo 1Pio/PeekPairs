@@ -55,7 +55,6 @@ struct MemoryCardView: View {
                 }
             }
             .scaleEffect(currentScale)
-            .modifier(CardDepthLiftEffect(progress: currentDepthLift))
             .rotationEffect(.degrees(currentRotation))
             .modifier(CardRecoilEffect(impulse: mismatchImpulse))
             .opacity(isRemoved ? 0 : (hasAppeared ? 1 : 0))
@@ -122,15 +121,9 @@ struct MemoryCardView: View {
     private var currentScale: CGFloat {
         let pressScale = isPressing ? 0.965 : 1
         let hoverScale = isHovering ? 1.018 : 1
-        let faceUpScale = card.isFaceUp ? 1.018 : 1
-        let revealScale = revealLift ? 1.018 : 1
+        let revealScale = revealLift ? 1.026 : 1
         let entranceScale = hasAppeared ? 1 : 0.82
-        return removedScale * pressScale * hoverScale * faceUpScale * revealScale * entranceScale
-    }
-
-    private var currentDepthLift: CGFloat {
-        if isRemoved { return 0 }
-        return card.isFaceUp ? 1 : 0
+        return removedScale * pressScale * hoverScale * revealScale * entranceScale
     }
 
     private var currentRotation: CGFloat {
@@ -158,11 +151,7 @@ struct MemoryCardView: View {
     }
 
     private var flipAnimation: Animation {
-        if reduceMotion {
-            return .smooth(duration: 0.16)
-        }
-
-        return card.isFaceUp ? CardMotionTiming.revealFlip : CardMotionTiming.hideFlip
+        reduceMotion ? .smooth(duration: 0.16) : CardMotionTiming.flip
     }
 
     private func playAppearanceAnimation() {
