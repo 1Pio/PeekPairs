@@ -1,4 +1,3 @@
-import AppKit
 import PeekPairsCore
 import SwiftUI
 
@@ -127,7 +126,7 @@ private struct CardFigureImage: View {
     let assetName: String
 
     var body: some View {
-        if let image = loadImage() {
+        if let image = CardFigureImageStore.shared.image(named: assetName) {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFit()
@@ -136,21 +135,5 @@ private struct CardFigureImage: View {
                 .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(.white.opacity(0.74))
         }
-    }
-
-    private func loadImage() -> NSImage? {
-        let url = Bundle.main.url(forResource: assetName, withExtension: "png", subdirectory: "CardFigures")
-            ?? Bundle.module.url(forResource: assetName, withExtension: "png")
-            ?? Bundle.module.url(
-                forResource: assetName,
-                withExtension: "png",
-                subdirectory: "CardFigures"
-            )
-
-        guard let url else {
-            return nil
-        }
-
-        return NSImage(contentsOf: url)
     }
 }

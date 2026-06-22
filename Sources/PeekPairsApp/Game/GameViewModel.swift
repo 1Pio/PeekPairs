@@ -13,12 +13,17 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var boardAnimationToken = 0
 
     private let store: AppFileStore
+    private let cardImageStore: CardFigureImageStore
     private var lastTickDate: Date?
     private var shouldResumeAfterActivation = false
     private var hasSavedCurrentRound = false
 
-    init(store: AppFileStore = AppFileStore()) {
+    init(
+        store: AppFileStore = AppFileStore(),
+        cardImageStore: CardFigureImageStore = .shared
+    ) {
         self.store = store
+        self.cardImageStore = cardImageStore
         let loadedSettings = store.load(AppSettings.self, from: .settings, fallback: .defaults)
         self.settings = loadedSettings
         self.history = store.load(RoundHistory.self, from: .history, fallback: RoundHistory())
@@ -28,6 +33,7 @@ final class GameViewModel: ObservableObject {
             assetNames: CardAssetCatalog.names,
             startsRunning: false
         )
+        cardImageStore.preload(CardAssetCatalog.names)
     }
 
     var statsSummary: RoundStatsSummary {
