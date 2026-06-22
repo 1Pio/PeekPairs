@@ -1,8 +1,10 @@
 import SwiftUI
 
 enum CardMotionTiming {
-    static let flip = Animation.interactiveSpring(response: 0.26, dampingFraction: 0.78, blendDuration: 0.02)
+    static let revealFlip = Animation.timingCurve(0.14, 0.84, 0.18, 1, duration: 0.34)
+    static let hideFlip = Animation.timingCurve(0.22, 0.76, 0.24, 1, duration: 0.28)
     static let quickSettle = Animation.interactiveSpring(response: 0.18, dampingFraction: 0.72, blendDuration: 0.01)
+    static let depthPulse = Animation.interactiveSpring(response: 0.2, dampingFraction: 0.68, blendDuration: 0.01)
     static let matchSettle = Animation.bouncy(duration: 0.38, extraBounce: 0.16)
     static let remove = Animation.timingCurve(0.18, 0.88, 0.24, 1, duration: 0.34)
     static let entrance = Animation.bouncy(duration: 0.48, extraBounce: 0.16)

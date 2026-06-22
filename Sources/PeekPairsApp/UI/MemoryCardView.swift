@@ -16,6 +16,8 @@ struct MemoryCardView: View {
     @State private var keepsFaceContentVisible = false
     @State private var faceContentTask: Task<Void, Never>?
     @State private var lastVisibility: CardVisibility?
+    @State private var flipProgress: CGFloat = 0
+    @State private var entranceLift = false
     @State private var revealLift = false
     @State private var revealGlintProgress: CGFloat = 1
     @State private var mismatchImpulse: CGFloat = 0
@@ -33,16 +35,16 @@ struct MemoryCardView: View {
         } label: {
             ZStack {
                 CardBackView()
-                    .opacity(card.isFaceUp ? 0 : 1)
-                    .rotation3DEffect(.degrees(card.isFaceUp ? -180 : 0), axis: (x: 0, y: 1, z: 0), perspective: 0.64)
+                    .opacity(showsFace ? 0 : 1)
+                    .rotation3DEffect(.degrees(flipAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.66)
 
                 CardFaceView(
                     assetName: card.assetName,
                     isMatched: card.visibility == .matched,
-                    rendersFigure: card.isFaceUp || keepsFaceContentVisible
+                    rendersFigure: rendersFaceContent
                 )
-                    .opacity(card.isFaceUp ? 1 : 0)
-                    .rotation3DEffect(.degrees(card.isFaceUp ? 0 : 180), axis: (x: 0, y: 1, z: 0), perspective: 0.64)
+                    .opacity(showsFace ? 1 : 0)
+                    .rotation3DEffect(.degrees(flipAngle - 180), axis: (x: 0, y: 1, z: 0), perspective: 0.66)
             }
             .overlay {
                 if revealGlintProgress < 1 {
@@ -59,11 +61,10 @@ struct MemoryCardView: View {
             .modifier(CardRecoilEffect(impulse: mismatchImpulse))
             .opacity(isRemoved ? 0 : (hasAppeared ? 1 : 0))
             .offset(x: currentOffset.width, y: currentOffset.height)
-            .animation(flipAnimation, value: card.isFaceUp)
             .animation(CardMotionTiming.remove, value: card.visibility)
             .animation(CardMotionTiming.quickSettle, value: isHovering)
             .animation(CardMotionTiming.quickSettle, value: isPressing)
-            .animation(CardMotionTiming.quickSettle, value: revealLift)
+            .animation(CardMotionTiming.depthPulse, value: revealLift)
         }
         .buttonStyle(.plain)
         .disabled(!card.isSelectable)
@@ -82,11 +83,13 @@ struct MemoryCardView: View {
         }
         .onAppear {
             lastVisibility = card.visibility
+            flipProgress = faceUpProgress(for: card.visibility)
             resetFaceContentRetention()
             playAppearanceAnimation()
         }
         .onChange(of: appearanceToken) {
             lastVisibility = card.visibility
+            flipProgress = faceUpProgress(for: card.visibility)
             resetTransientMotion()
             resetFaceContentRetention()
             playAppearanceAnimation()
@@ -121,9 +124,26 @@ struct MemoryCardView: View {
     private var currentScale: CGFloat {
         let pressScale = isPressing ? 0.965 : 1
         let hoverScale = isHovering ? 1.018 : 1
-        let revealScale = revealLift ? 1.026 : 1
-        let entranceScale = hasAppeared ? 1 : 0.82
-        return removedScale * pressScale * hoverScale * revealScale * entranceScale
+        let revealScale = revealLift ? 1.045 : 1
+        let entranceBaseScale = hasAppeared ? 1 : 0.72
+        let entranceLiftScale = entranceLift ? 1.045 : 1
+        return removedScale * pressScale * hoverScale * revealScale * entranceBaseScale * entranceLiftScale
+    }
+
+    private var rendersFaceContent: Bool {
+        card.isFaceUp || keepsFaceContentVisible || flipProgress > 0.001
+    }
+
+    private var clampedFlipProgress: CGFloat {
+        min(max(flipProgress, 0), 1)
+    }
+
+    private var flipAngle: Double {
+        Double(clampedFlipProgress) * 180
+    }
+
+    private var showsFace: Bool {
+        clampedFlipProgress >= 0.5
     }
 
     private var currentRotation: CGFloat {
@@ -143,20 +163,13 @@ struct MemoryCardView: View {
             return CGSize(width: 0, height: 5)
         }
 
-        if hasAppeared {
-            return .zero
-        }
-
-        return CGSize(width: -16, height: -10)
-    }
-
-    private var flipAnimation: Animation {
-        reduceMotion ? .smooth(duration: 0.16) : CardMotionTiming.flip
+        return .zero
     }
 
     private func playAppearanceAnimation() {
         appearanceTask?.cancel()
         hasAppeared = false
+        entranceLift = false
 
         appearanceTask = Task { @MainActor in
             await sleepForAppearanceDelay()
@@ -164,6 +177,15 @@ struct MemoryCardView: View {
 
             withAnimation(reduceMotion ? .smooth(duration: 0.16) : CardMotionTiming.entrance) {
                 hasAppeared = true
+                entranceLift = !reduceMotion
+            }
+
+            guard !reduceMotion else { return }
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            guard !Task.isCancelled else { return }
+
+            withAnimation(CardMotionTiming.depthPulse) {
+                entranceLift = false
             }
         }
     }
@@ -200,12 +222,15 @@ struct MemoryCardView: View {
         matchTask = nil
         isHovering = false
         isPressing = false
+        entranceLift = false
         revealLift = false
         revealGlintProgress = 1
         matchFlourishProgress = 1
     }
 
     private func playMotion(from oldVisibility: CardVisibility?, to newVisibility: CardVisibility) {
+        updateFlipProgress(to: newVisibility)
+
         guard !reduceMotion else { return }
 
         if oldVisibility == .hidden && (newVisibility == .revealed || newVisibility == .matched) {
@@ -221,6 +246,31 @@ struct MemoryCardView: View {
         }
     }
 
+    private func updateFlipProgress(to visibility: CardVisibility) {
+        let targetProgress = faceUpProgress(for: visibility)
+        guard abs(flipProgress - targetProgress) > 0.001 else { return }
+
+        let isRevealing = targetProgress > flipProgress
+        let animation: Animation = if reduceMotion {
+            .smooth(duration: 0.12)
+        } else {
+            isRevealing ? CardMotionTiming.revealFlip : CardMotionTiming.hideFlip
+        }
+
+        withAnimation(animation) {
+            flipProgress = targetProgress
+        }
+    }
+
+    private func faceUpProgress(for visibility: CardVisibility) -> CGFloat {
+        switch visibility {
+        case .revealed, .matched:
+            return 1
+        case .hidden, .removed:
+            return 0
+        }
+    }
+
     private func playRevealMotion() {
         revealTask?.cancel()
         revealLift = true
@@ -233,7 +283,7 @@ struct MemoryCardView: View {
         revealTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 130_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(CardMotionTiming.quickSettle) {
+            withAnimation(CardMotionTiming.depthPulse) {
                 revealLift = false
             }
         }
