@@ -69,6 +69,7 @@ struct MemoryCardView: View {
             faceContentTask?.cancel()
             faceContentTask = nil
         }
+        .accessibilityIdentifier("card-\(card.id)")
     }
 
     private var removedScale: CGFloat {
