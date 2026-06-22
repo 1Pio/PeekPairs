@@ -4,7 +4,7 @@ import SwiftUI
 struct RootView: View {
     @ObservedObject var viewModel: GameViewModel
 
-    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: GameTiming.tickInterval, on: .main, in: .common).autoconnect()
 
     var body: some View {
         GeometryReader { proxy in
