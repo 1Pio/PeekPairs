@@ -173,6 +173,14 @@ private struct CardFaceView: View {
     let rendersFigure: Bool
 
     var body: some View {
+        if rendersFigure {
+            faceContent
+        } else {
+            Color.clear
+        }
+    }
+
+    private var faceContent: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
             .fill(Color(red: 0.06, green: 0.075, blue: 0.09).opacity(0.96))
             .overlay {
@@ -180,11 +188,9 @@ private struct CardFaceView: View {
                     .strokeBorder(isMatched ? Color.mint.opacity(0.74) : Color.white.opacity(0.18), lineWidth: isMatched ? 2 : 1)
             }
             .overlay {
-                if rendersFigure {
-                    CardFigureImage(assetName: assetName)
-                        .padding(8)
-                        .shadow(color: .white.opacity(0.18), radius: 6)
-                }
+                CardFigureImage(assetName: assetName)
+                    .padding(8)
+                    .shadow(color: .white.opacity(0.18), radius: 6)
             }
             .shadow(color: isMatched ? Color.mint.opacity(0.18) : .black.opacity(0.26), radius: isMatched ? 14 : 9, y: 5)
             .glassEffect(.regular.tint(Color.white.opacity(0.035)), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
