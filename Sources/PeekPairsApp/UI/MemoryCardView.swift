@@ -131,6 +131,14 @@ struct MemoryCardView: View {
     }
 }
 
+extension MemoryCardView: Equatable {
+    nonisolated static func == (lhs: MemoryCardView, rhs: MemoryCardView) -> Bool {
+        lhs.card == rhs.card
+            && lhs.appearanceToken == rhs.appearanceToken
+            && lhs.appearanceDelay == rhs.appearanceDelay
+    }
+}
+
 private struct CardBackView: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)

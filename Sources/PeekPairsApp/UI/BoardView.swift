@@ -36,6 +36,7 @@ struct BoardView: View {
                         ) {
                             onSelect(card.id)
                         }
+                        .equatable()
                         .aspectRatio(1, contentMode: .fit)
                         .accessibilityIdentifier("card-\(card.id)")
                     }
