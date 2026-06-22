@@ -7,11 +7,21 @@ struct MemoryCardView: View {
     let appearanceDelay: TimeInterval
     let onSelect: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var isHovering = false
     @State private var isPressing = false
     @State private var hasAppeared = false
     @State private var appearanceTask: Task<Void, Never>?
     @State private var keepsFaceContentVisible = false
     @State private var faceContentTask: Task<Void, Never>?
+    @State private var lastVisibility: CardVisibility?
+    @State private var revealLift = false
+    @State private var revealGlintProgress: CGFloat = 1
+    @State private var mismatchImpulse: CGFloat = 0
+    @State private var matchFlourishProgress: CGFloat = 1
+    @State private var revealTask: Task<Void, Never>?
+    @State private var matchTask: Task<Void, Never>?
 
     private var isRemoved: Bool {
         card.visibility == .removed
@@ -34,11 +44,26 @@ struct MemoryCardView: View {
                     .opacity(card.isFaceUp ? 1 : 0)
                     .rotation3DEffect(.degrees(card.isFaceUp ? 0 : 180), axis: (x: 0, y: 1, z: 0), perspective: 0.64)
             }
+            .overlay {
+                if revealGlintProgress < 1 {
+                    CardRevealGlintView(progress: revealGlintProgress)
+                }
+            }
+            .overlay {
+                if matchFlourishProgress < 1 {
+                    CardMatchedFlourishView(progress: matchFlourishProgress)
+                }
+            }
             .scaleEffect(currentScale)
+            .rotationEffect(.degrees(currentRotation))
+            .modifier(CardRecoilEffect(impulse: mismatchImpulse))
             .opacity(isRemoved ? 0 : (hasAppeared ? 1 : 0))
-            .offset(x: hasAppeared ? 0 : -16, y: hasAppeared ? 0 : -10)
-            .animation(.smooth(duration: 0.23), value: card.isFaceUp)
-            .animation(.bouncy(duration: 0.42, extraBounce: 0.2), value: card.visibility)
+            .offset(x: currentOffset.width, y: currentOffset.height)
+            .animation(flipAnimation, value: card.isFaceUp)
+            .animation(CardMotionTiming.remove, value: card.visibility)
+            .animation(CardMotionTiming.quickSettle, value: isHovering)
+            .animation(CardMotionTiming.quickSettle, value: isPressing)
+            .animation(CardMotionTiming.quickSettle, value: revealLift)
         }
         .buttonStyle(.plain)
         .disabled(!card.isSelectable)
@@ -52,22 +77,39 @@ struct MemoryCardView: View {
                     isPressing = false
                 }
         )
+        .onHover { isInside in
+            isHovering = isInside && card.isSelectable
+        }
         .onAppear {
+            lastVisibility = card.visibility
             resetFaceContentRetention()
             playAppearanceAnimation()
         }
         .onChange(of: appearanceToken) {
+            lastVisibility = card.visibility
+            resetTransientMotion()
             resetFaceContentRetention()
             playAppearanceAnimation()
         }
         .onChange(of: card.visibility) {
+            let previousVisibility = lastVisibility
+            lastVisibility = card.visibility
             updateFaceContentRetention(for: card.visibility)
+            playMotion(from: previousVisibility, to: card.visibility)
+            if !card.isSelectable {
+                isHovering = false
+                isPressing = false
+            }
         }
         .onDisappear {
             appearanceTask?.cancel()
             appearanceTask = nil
             faceContentTask?.cancel()
             faceContentTask = nil
+            revealTask?.cancel()
+            revealTask = nil
+            matchTask?.cancel()
+            matchTask = nil
         }
         .accessibilityIdentifier("card-\(card.id)")
     }
@@ -78,8 +120,38 @@ struct MemoryCardView: View {
 
     private var currentScale: CGFloat {
         let pressScale = isPressing ? 0.965 : 1
+        let hoverScale = isHovering ? 1.018 : 1
+        let revealScale = revealLift ? 1.026 : 1
         let entranceScale = hasAppeared ? 1 : 0.82
-        return removedScale * pressScale * entranceScale
+        return removedScale * pressScale * hoverScale * revealScale * entranceScale
+    }
+
+    private var currentRotation: CGFloat {
+        if isRemoved {
+            return CGFloat((card.id % 5) - 2) * 4.5
+        }
+
+        if isPressing {
+            return CGFloat((card.id % 3) - 1) * 0.9
+        }
+
+        return 0
+    }
+
+    private var currentOffset: CGSize {
+        if isRemoved {
+            return CGSize(width: 0, height: 5)
+        }
+
+        if hasAppeared {
+            return .zero
+        }
+
+        return CGSize(width: -16, height: -10)
+    }
+
+    private var flipAnimation: Animation {
+        reduceMotion ? .smooth(duration: 0.16) : CardMotionTiming.flip
     }
 
     private func playAppearanceAnimation() {
@@ -90,7 +162,7 @@ struct MemoryCardView: View {
             await sleepForAppearanceDelay()
             guard !Task.isCancelled else { return }
 
-            withAnimation(.bouncy(duration: 0.46, extraBounce: 0.18)) {
+            withAnimation(reduceMotion ? .smooth(duration: 0.16) : CardMotionTiming.entrance) {
                 hasAppeared = true
             }
         }
@@ -119,6 +191,72 @@ struct MemoryCardView: View {
         faceContentTask?.cancel()
         faceContentTask = nil
         keepsFaceContentVisible = card.isFaceUp
+    }
+
+    private func resetTransientMotion() {
+        revealTask?.cancel()
+        revealTask = nil
+        matchTask?.cancel()
+        matchTask = nil
+        isHovering = false
+        isPressing = false
+        revealLift = false
+        revealGlintProgress = 1
+        matchFlourishProgress = 1
+    }
+
+    private func playMotion(from oldVisibility: CardVisibility?, to newVisibility: CardVisibility) {
+        guard !reduceMotion else { return }
+
+        if oldVisibility == .hidden && (newVisibility == .revealed || newVisibility == .matched) {
+            playRevealMotion()
+        }
+
+        if oldVisibility == .revealed && newVisibility == .hidden {
+            playMismatchMotion()
+        }
+
+        if newVisibility == .matched {
+            playMatchMotion()
+        }
+    }
+
+    private func playRevealMotion() {
+        revealTask?.cancel()
+        revealLift = true
+        revealGlintProgress = 0
+
+        withAnimation(.smooth(duration: 0.28)) {
+            revealGlintProgress = 1
+        }
+
+        revealTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 130_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(CardMotionTiming.quickSettle) {
+                revealLift = false
+            }
+        }
+    }
+
+    private func playMismatchMotion() {
+        withAnimation(.smooth(duration: 0.34)) {
+            mismatchImpulse += 1
+        }
+    }
+
+    private func playMatchMotion() {
+        matchTask?.cancel()
+        matchFlourishProgress = 0
+
+        matchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 70_000_000)
+            guard !Task.isCancelled else { return }
+
+            withAnimation(CardMotionTiming.matchSettle) {
+                matchFlourishProgress = 1
+            }
+        }
     }
 
     private func clearFaceContent(after delay: TimeInterval) {
