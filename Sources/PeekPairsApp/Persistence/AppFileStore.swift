@@ -19,13 +19,22 @@ struct AppFileStore {
     private let decoder: JSONDecoder
     private let rootURL: URL
 
-    init(fileManager: FileManager = .default) {
+    init(
+        fileManager: FileManager = .default,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
         encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         decoder = JSONDecoder()
 
-        let supportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let supportURL: URL
+        if let overridePath = environment["PEEKPAIRS_SUPPORT_DIR"], !overridePath.isEmpty {
+            supportURL = URL(fileURLWithPath: overridePath, isDirectory: true)
+        } else {
+            supportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+                .first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        }
+
         rootURL = supportURL.appendingPathComponent("PeekPairs", isDirectory: true)
 
         try? fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)

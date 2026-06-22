@@ -31,11 +31,12 @@ final class GameViewModel: ObservableObject {
         self.cardImageStore = cardImageStore
         let loadedSettings = store.load(AppSettings.self, from: .settings, fallback: .defaults)
         let loadedHistory = store.load(RoundHistory.self, from: .history, fallback: RoundHistory())
+        let startsRunning = Self.environmentFlag("PEEKPAIRS_AUTOSTART")
         let initialGame = MemoryGameEngine(
             boardSize: loadedSettings.boardSize,
             seed: Self.nextSeed(),
             assetNames: CardAssetCatalog.names,
-            startsRunning: false
+            startsRunning: startsRunning
         )
         self.settings = loadedSettings
         self.history = loadedHistory
@@ -45,6 +46,7 @@ final class GameViewModel: ObservableObject {
         self.pairProgressState = PairProgressRenderState(game: initialGame)
         self.controlsState = GameControlsRenderState(game: initialGame)
         cardImageStore.preload(CardAssetCatalog.names)
+        lastTickDate = startsRunning ? Date() : nil
     }
 
     var statsSummary: RoundStatsSummary {
@@ -223,5 +225,10 @@ final class GameViewModel: ObservableObject {
 
     private static func nextSeed() -> UInt64 {
         ProcessInfo.processInfo.environment["PEEKPAIRS_SEED"].flatMap(UInt64.init) ?? RandomSeed.make()
+    }
+
+    private static func environmentFlag(_ key: String) -> Bool {
+        guard let value = ProcessInfo.processInfo.environment[key] else { return false }
+        return ["1", "true", "yes"].contains(value.lowercased())
     }
 }
