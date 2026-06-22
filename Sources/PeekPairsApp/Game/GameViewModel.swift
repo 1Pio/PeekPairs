@@ -45,7 +45,7 @@ final class GameViewModel: ObservableObject {
         self.stopwatchState = StopwatchRenderState(elapsed: initialGame.elapsed)
         self.pairProgressState = PairProgressRenderState(game: initialGame)
         self.controlsState = GameControlsRenderState(game: initialGame)
-        cardImageStore.preload(CardAssetCatalog.names)
+        preloadImages(for: initialGame)
         lastTickDate = startsRunning ? Date() : nil
     }
 
@@ -208,6 +208,7 @@ final class GameViewModel: ObservableObject {
         )
         boardAnimationToken &+= 1
         hasSavedCurrentRound = false
+        preloadImages(for: game)
         syncRenderState()
     }
 
@@ -224,6 +225,10 @@ final class GameViewModel: ObservableObject {
         stopwatchState.update(elapsed: game.elapsed)
         pairProgressState.update(from: game)
         controlsState.update(from: game)
+    }
+
+    private func preloadImages(for game: MemoryGameEngine) {
+        cardImageStore.preload(Set(game.cards.map(\.assetName)))
     }
 
     private static func nextSeed() -> UInt64 {
