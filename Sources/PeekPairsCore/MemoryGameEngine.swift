@@ -110,8 +110,9 @@ public struct MemoryGameEngine: Equatable, Sendable {
         phase = .idle
     }
 
-    public mutating func advance(by delta: TimeInterval) {
-        guard delta > 0 else { return }
+    @discardableResult
+    public mutating func advance(by delta: TimeInterval) -> Bool {
+        guard delta > 0 else { return false }
 
         switch phase {
         case .running:
@@ -120,16 +121,16 @@ public struct MemoryGameEngine: Equatable, Sendable {
         case .completed:
             animationElapsed += delta
         case .idle, .paused:
-            return
+            return false
         }
 
-        processDueEvents()
+        return processDueEvents()
     }
 
     @discardableResult
     public mutating func selectCard(id: Int) -> SelectionFeedback {
         guard phase == .running else { return .ignored }
-        processDueEvents()
+        _ = processDueEvents()
 
         guard let selectedIndex = index(forCardID: id),
               cards[selectedIndex].isSelectable
@@ -138,7 +139,7 @@ public struct MemoryGameEngine: Equatable, Sendable {
         }
 
         if revealedCardIDs.count == 2 {
-            hideVisibleMismatch()
+            _ = hideVisibleMismatch()
         }
 
         cards[selectedIndex].visibility = .revealed
@@ -171,9 +172,11 @@ public struct MemoryGameEngine: Equatable, Sendable {
         }
     }
 
-    private mutating func processDueEvents() {
+    private mutating func processDueEvents() -> Bool {
+        var didChangeCards = false
+
         if let mismatchHideAt, animationElapsed >= mismatchHideAt {
-            hideVisibleMismatch()
+            didChangeCards = hideVisibleMismatch() || didChangeCards
         }
 
         let duePairIDs = matchedPairRemovalDueAt
@@ -181,28 +184,40 @@ public struct MemoryGameEngine: Equatable, Sendable {
             .map(\.key)
 
         for pairID in duePairIDs {
-            removeMatchedPair(pairID: pairID)
+            didChangeCards = removeMatchedPair(pairID: pairID) || didChangeCards
         }
+
+        return didChangeCards
     }
 
-    private mutating func hideVisibleMismatch() {
+    private mutating func hideVisibleMismatch() -> Bool {
+        var didChangeCards = false
+
         for cardID in revealedCardIDs {
             guard let index = index(forCardID: cardID),
                   cards[index].visibility == .revealed
             else { continue }
             cards[index].visibility = .hidden
+            didChangeCards = true
         }
         revealedCardIDs.removeAll()
         mismatchHideAt = nil
+
+        return didChangeCards
     }
 
-    private mutating func removeMatchedPair(pairID: Int) {
+    private mutating func removeMatchedPair(pairID: Int) -> Bool {
         matchedPairRemovalDueAt[pairID] = nil
+        var didChangeCards = false
 
         for cardID in cardIDsByPairID[pairID, default: []] {
             guard let index = index(forCardID: cardID) else { continue }
+            guard cards[index].visibility != .removed else { continue }
             cards[index].visibility = .removed
+            didChangeCards = true
         }
+
+        return didChangeCards
     }
 
     private func index(forCardID cardID: Int) -> Int? {

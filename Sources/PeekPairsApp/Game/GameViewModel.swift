@@ -71,8 +71,11 @@ final class GameViewModel: ObservableObject {
         let delta = max(0, now.timeIntervalSince(lastTickDate))
         self.lastTickDate = now
 
-        game.advance(by: min(delta, 0.25))
-        syncRenderState()
+        let didUpdateBoard = game.advance(by: min(delta, 0.25))
+        stopwatchState.update(elapsed: game.elapsed)
+        if didUpdateBoard {
+            boardState.update(from: game, appearanceToken: boardAnimationToken)
+        }
         saveRoundIfNeeded()
     }
 

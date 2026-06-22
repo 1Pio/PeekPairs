@@ -106,6 +106,29 @@ struct MemoryGameEngineTests {
         #expect(game.cards.first { $0.id == first.id }?.visibility == .removed)
     }
 
+    @Test("advance reports whether it changed card visibility")
+    func advanceReportsVisualChanges() throws {
+        let boardSize = try BoardSize(2)
+        var game = MemoryGameEngine(boardSize: boardSize, seed: 4, assetNames: assets, startsRunning: true)
+        let first = game.cards[0]
+        let mismatch = game.cards.first { $0.pairID != first.pairID }!
+
+        _ = game.selectCard(id: first.id)
+        _ = game.selectCard(id: mismatch.id)
+
+        #expect(game.advance(by: 0.1) == false)
+        #expect(game.advance(by: MemoryGameEngine.mismatchVisibilityDuration) == true)
+        #expect(game.cards.first { $0.id == first.id }?.visibility == .hidden)
+
+        let matchFirst = game.cards[0]
+        let matchSecond = game.cards.first { $0.pairID == matchFirst.pairID && $0.id != matchFirst.id }!
+        _ = game.selectCard(id: matchFirst.id)
+        _ = game.selectCard(id: matchSecond.id)
+
+        #expect(game.advance(by: MemoryGameEngine.matchedVisibilityDuration + 0.01) == true)
+        #expect(game.cards.first { $0.id == matchFirst.id }?.visibility == .removed)
+    }
+
     @Test("final pair completes the round immediately and keeps removal cosmetic")
     func finalPairCompletesBeforeRemoval() throws {
         let boardSize = try BoardSize(2)
