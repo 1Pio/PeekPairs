@@ -9,6 +9,7 @@ struct MemoryCardView: View {
 
     @State private var isPressing = false
     @State private var hasAppeared = false
+    @State private var appearanceTask: Task<Void, Never>?
 
     private var isRemoved: Bool {
         card.visibility == .removed
@@ -51,6 +52,10 @@ struct MemoryCardView: View {
         .onChange(of: appearanceToken) {
             playAppearanceAnimation()
         }
+        .onDisappear {
+            appearanceTask?.cancel()
+            appearanceTask = nil
+        }
     }
 
     private var removedScale: CGFloat {
@@ -64,13 +69,23 @@ struct MemoryCardView: View {
     }
 
     private func playAppearanceAnimation() {
+        appearanceTask?.cancel()
         hasAppeared = false
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + appearanceDelay) {
+        appearanceTask = Task { @MainActor in
+            await sleepForAppearanceDelay()
+            guard !Task.isCancelled else { return }
+
             withAnimation(.bouncy(duration: 0.46, extraBounce: 0.18)) {
                 hasAppeared = true
             }
         }
+    }
+
+    private func sleepForAppearanceDelay() async {
+        guard appearanceDelay > 0 else { return }
+        let nanoseconds = UInt64(appearanceDelay * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: nanoseconds)
     }
 }
 
